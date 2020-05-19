@@ -8,7 +8,7 @@ from subprocess import PIPE, Popen
 
 from odoo import api, fields, models, tools
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DATE_FORMAT
-
+from odoo.exceptions import  UserError
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
@@ -30,7 +30,7 @@ class ResPartner(models.Model):
             else:
                 partner.anaf_history = [(6, 0, [])]
 
-    vat_on_payment = fields.Boolean("VAT on Payment")
+    vat_on_payment = fields.Boolean("VAT on Payment",tracking=1)
     vat_number = fields.Char(
         "VAT number",
         compute="_compute_vat_number",
@@ -53,10 +53,10 @@ class ResPartner(models.Model):
                 return datetime.strptime(str(strdate), "%Y%m%d").strftime(DATE_FORMAT)
 
         vat_numbers = [
-            p.vat_number for p in self if p.vat and p.vat.lower().startswith("ro")
+            p.vat_number for p in self if p.vat and p.vat.lower().startswith("ro") and len(p.vat)>3 and p.vat[2:].isnumeric() 
         ]
         if vat_numbers == []:
-            return
+            raise UserError( 'No ANAF verification done.\nVAT must start with RO and followed by numbers' )
         anaf_obj = self.env["res.partner.anaf"]
         data_dir = tools.config["data_dir"]
         istoric = os.path.join(data_dir, "istoric.txt")
