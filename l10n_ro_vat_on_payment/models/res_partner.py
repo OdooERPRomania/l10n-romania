@@ -18,6 +18,8 @@ class ResPartner(models.Model):
         for partner in self:
             if partner.vat:
                 partner.vat_number = self._split_vat(partner.vat)[1]
+            else:
+                partner.vat_number = ''
 
     @api.depends("vat_number")
     def _compute_anaf_history(self):
