@@ -26,19 +26,16 @@
         <field name="inherit_id" ref="base.view_partner_form" />
         <field name="arch" type="xml">
             <field name="vat" position="after">
-                <label for="vat_on_payment" />
+ 	               <label for="vat_on_payment"     attrs="{'invisible': [('vat', '=', False), ('company_type', '!=', 'company')]}"  />
+
                 <div name="vat_on_payment_info" class="o_row">
+ 
                     <field
                         name="vat_on_payment"
-                        attrs="{'invisible': [
-                            ('vat', '=', False),
-                            ('company_type', '=', 'company')]}"
-                    />
+                        attrs="{'invisible': [ ('vat', '=', False), ('company_type', '!=', 'company')]}"  />
                     <button
                         name="check_vat_on_payment"
-                        attrs="{'invisible': [
-                            ('vat', '=', False),
-                            ('is_company', '=', False )]}"
+                        attrs="{'invisible': [ ('vat', '=', False), ('company_type', '!=', 'company' )]}"
                         string="Update VAT on Payment"
                         type="object"
                         class="oe_highlight"
