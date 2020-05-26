@@ -3,10 +3,11 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 from odoo import api, models
-
+from odoo.exceptions import ValidationError
 
 class AccountMove(models.Model):
     _inherit = "account.move"
+    print('xxxx')
 
     @api.onchange("partner_id", "company_id")
     def _onchange_partner_id(self):
@@ -35,3 +36,23 @@ class AccountMove(models.Model):
             if fptvainc:
                 self.fiscal_position_id = fptvainc
         return result
+    
+    @api.constrains('state')
+    def _check_all_lines_wiht_exigibility_or_without(self):
+        "if one line has vat on payment ( tax.tax_exigibility ='on_payment' <=> tax_exigible=False) all must be the same "
+        for record in self:
+            if record.is_invoice( include_receipts=True):
+                exigibility = 0 
+                for line in record.invoice_line_ids:
+                    if line.display_type in ['line_section', 'line_note']:
+                        continue
+                    else:
+                        if line.tax_exigible:
+                            if exigibility<0:
+                                raise ValidationError(f"At invoice_nr={record.name}, invoice_date={record.invoice_date}, invoice_partner={record.partner_id.name} you have lines with vat_on_payment and some lines without")
+                            exigibility += 1
+                        else:
+                            if exigibility>0:
+                                raise ValidationError(f"At invoice_nr={record.name}, invoice_date={record.invoice_date}, invoice_partner={record.partner_id.name} you have lines with vat_on_payment and some lines without")
+                            exigibility -= 1
+    
