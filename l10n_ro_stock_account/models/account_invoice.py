@@ -44,7 +44,7 @@ class AccountInvoice(models.Model):
         account_id = self.company_id.property_stock_picking_payable_account_id
         get_param = self.env['ir.config_parameter'].sudo().get_param
         # char daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
-        if not self.env.user.company_id.anglo_saxon_accounting:
+        if not self.env.user.company_id.use_anglo_saxon:
             for invoice in self:
                 if invoice.type in ['in_invoice', 'in_refund']:
                     diff_limit = float(get_param('stock_account.diff_limit', '2.0'))

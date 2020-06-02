@@ -7,9 +7,8 @@ from odoo.exceptions import ValidationError
 
 class AccountMove(models.Model):
     _inherit = "account.move"
-    print('xxxx')
 
-    @api.onchange("partner_id", "company_id")
+    @api.onchange("partner_id", "company_id",'invoice_date')
     def _onchange_partner_id(self):
         """ Check if invoice is with VAT on Payment.
             Romanian law specify that the VAT on payment is applied only

@@ -32,7 +32,8 @@ class ResPartner(models.Model):
             else:
                 partner.anaf_history = [(6, 0, [])]
 
-    vat_on_payment = fields.Boolean("VAT on Payment",tracking=1)
+
+    vat_on_payment = fields.Boolean("VAT on Payment",readonly=1, help="This field is just showing if today this vat has vat on payment.\nThe field is not used in any way; is updated usually daily by cron.\nThe field used is anaf_history, and based on this and date of invoice the invoice(account.move) will have the fiscal position that contain 'Regim TVA la Incasare'")
     vat_number = fields.Char(
         "VAT number",
         compute="_compute_vat_number",
@@ -44,10 +45,11 @@ class ResPartner(models.Model):
         compute="_compute_anaf_history",
         string="ANAF History",
         readonly=True,
+        help="shows the history of vat on payment on this partner ( taken by vat)"
     )
 
     @api.model
-    def _insert_relevant_anaf_data(self):
+    def _insert_relevant_anaf_data(self,show_error=False):
         """ Load VAT on payment lines for specified partners."""
 
         def format_date(strdate):
@@ -57,7 +59,7 @@ class ResPartner(models.Model):
         vat_numbers = [
             p.vat_number for p in self if p.vat and p.vat.lower().startswith("ro") and len(p.vat)>3 and p.vat[2:].isnumeric() 
         ]
-        if vat_numbers == []:
+        if vat_numbers == [] and show_error:
             raise UserError( 'No ANAF verification done.\nVAT must start with RO and followed by numbers' )
         anaf_obj = self.env["res.partner.anaf"]
         data_dir = tools.config["data_dir"]
@@ -84,7 +86,7 @@ class ResPartner(models.Model):
                     }
                 )
 
-    def _check_vat_on_payment(self):
+    def _check_vat_on_payment(self,show_error=False):
         self.ensure_one()
         ctx = dict(self._context)
         vat_on_payment = False
@@ -106,17 +108,19 @@ class ResPartner(models.Model):
                     vat_on_payment = True
         return vat_on_payment
 
-    def check_vat_on_payment(self):
+    def check_vat_on_payment(self,show_error=False):
         ctx = dict(self._context)
         ctx.update({"check_date": date.today()})
-
         for partner in self:
-            partner.vat_on_payment = partner.with_context(ctx)._check_vat_on_payment()
+            partner.vat_on_payment = partner.with_context(ctx)._check_vat_on_payment(show_error)
+
+    def from_button_check_vat_on_payment(self,show_error=True):
+        return self.check_vat_on_payment(show_error)
 
     @api.model
     def update_vat_payment_all(self):
         self.env["res.partner.anaf"]._download_anaf_data()
-        partners = self.search([("vat", "!=", False)])
+        partners = self.search([("vat", "!=", False),('vat','ilike','ro'),('parent_id','=',False)])
         partners.check_vat_on_payment()
 
     @api.model

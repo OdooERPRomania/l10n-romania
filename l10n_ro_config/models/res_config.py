@@ -10,6 +10,8 @@ import csv
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
+    use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
+
     anglo_saxon_accounting = fields.Boolean(related='company_id.anglo_saxon_accounting', readonly=False)
 
     module_account_compensation = fields.Boolean('Account Compensation',
@@ -127,28 +129,8 @@ class ResConfigSettings(models.TransientModel):
                                                          related='company_id.property_stock_transfer_account_id',readonly=False,
                                                          string="Stock Transfer Account")
 
-    property_trade_discount_received_account_id = fields.Many2one('account.account',
-                                                                  related='company_id.property_trade_discount_received_account_id',
-                                                                  readonly=False,
-                                                                  string='Trade discounts received')
-    property_trade_discount_granted_account_id = fields.Many2one('account.account',
-                                                                 related='company_id.property_trade_discount_granted_account_id',
-                                                                 readonly=False,
-                                                                 string='Trade discounts granted')
 
     siruta_update = fields.Boolean('Update Siruta Data')
-
-    invoice_report_show_discount = fields.Boolean(string='Show discount on invoice report',config_parameter='l10n_ro_config.show_discount')
-
-
-    property_vat_on_payment_position_id = fields.Many2one('account.fiscal.position',string='VAT on Payment',
-                                                       related='company_id.property_vat_on_payment_position_id',
-                                                       readonly=False                                                       )
-    property_inverse_taxation_position_id = fields.Many2one('account.fiscal.position', string='Inverse Taxation',
-                                                         related='company_id.property_inverse_taxation_position_id',
-                                                        readonly=False)
-
-
 
 
     def execute(self):

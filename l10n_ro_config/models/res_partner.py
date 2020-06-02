@@ -10,7 +10,6 @@ from odoo import models, fields, api, _
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-
-    vat_subjected = fields.Boolean('VAT Legal Statement')
-    split_vat = fields.Boolean('Split VAT')
-    vat_on_payment = fields.Boolean('VAT on Payment')
+#     vat_subjected = fields.Boolean('VAT Legal Statement') # also in partner_create_by_vat
+#     split_vat = fields.Boolean('Split VAT') # also in partner_create_by_vat      does not exist anymore from 2020
+    

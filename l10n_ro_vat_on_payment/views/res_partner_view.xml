@@ -34,7 +34,7 @@
                         name="vat_on_payment"
                         attrs="{'invisible': [ ('vat', '=', False), ('company_type', '!=', 'company')]}"  />
                     <button
-                        name="check_vat_on_payment"
+                        name="from_button_check_vat_on_payment"
                         attrs="{'invisible': [ ('vat', '=', False), ('company_type', '!=', 'company' )]}"
                         string="Update VAT on Payment"
                         type="object"
