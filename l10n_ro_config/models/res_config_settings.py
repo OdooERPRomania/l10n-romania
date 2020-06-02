@@ -14,6 +14,11 @@ class ResConfigSettings(models.TransientModel):
 
     module_account_compensation = fields.Boolean('Account Compensation',
                                                  help='This allows you to manage partners compensation on accounts marked to be reconciled.')
+
+    module_l10n_ro_vat_on_payment = fields.Boolean('VAT_on_payment',
+                                           help='This module will download data from ANAF site and when you give or receive a invoice will set fiscal position for VAT on payment')
+
+    
     module_account_storno = fields.Boolean('Storno Accounting',
                                            help='This allows you to manage the storno behaviour in accounting.')
 
