@@ -12,14 +12,12 @@ class ResConfigSettings(models.TransientModel):
 
     use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
 
-    anglo_saxon_accounting = fields.Boolean(related='company_id.anglo_saxon_accounting', readonly=False)
-
     module_account_compensation = fields.Boolean('Account Compensation',
                                                  help='This allows you to manage partners compensation on accounts marked to be reconciled.')
     module_account_storno = fields.Boolean('Storno Accounting',
                                            help='This allows you to manage the storno behaviour in accounting.')
 
-    module_currency_rate_update = fields.Boolean('Currency Rate Update',
+    module_currency_rate_update_RO_BNR = fields.Boolean('Currency Rate Update BNR',
                                                  help='This allows you to manage the update of currency rate based on different provider, use BNR site.')
     module_l10n_ro_account_bank_statement = fields.Boolean('Bank Statement Invoices',
                                                            help='This allows you to manage imports in bank statement line of the invoices only.')

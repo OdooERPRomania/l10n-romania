@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 {
     "name": "Currency Rate Update - BNR",
-    "category": "Financial Management/Configuration",
+    "category": 'Localization',#"Financial Management/Configuration",
     "summary": "Currency Rate Update National Bank of Romania service",
     "depends": ["base", "currency_rate_update"],
     "license": "AGPL-3",
@@ -10,6 +10,9 @@
     "Forest and Biomass Romania,"
     "Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/l10n-romania",
+    'data': [
+        'views/res_currency_rate.xml',
+    ],
     "installable": True,
     "development_status": "Mature",
     "maintainers": ["feketemihai"],

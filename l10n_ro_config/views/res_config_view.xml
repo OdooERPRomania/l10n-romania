@@ -8,10 +8,10 @@
             <field name="inherit_id" ref="base.res_config_settings_view_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='module_currency_rate_live']" position="replace">
-                    <field name="module_currency_rate_update"/>
+                    <field name="module_currency_rate_update_RO_BNR" />
                 </xpath>
                 <label for="module_currency_rate_live" position="replace">
-                	<label for="module_currency_rate_update"/>
+                	<label for="module_currency_rate_update_RO_BNR"/>
                 </label>
 
                 <xpath expr="//div[hasclass('settings')]" position="inside">
