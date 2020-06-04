@@ -202,29 +202,54 @@
                                     <label for="module_l10n_ro_stock_account"/>
                                     <div class="content-group"
                                          attrs="{'invisible': [('module_l10n_ro_stock_account', '=', False)]}">
-                                        <div class="row mt16">
-                                            <label for="property_stock_picking_receivable_account_id"
-                                                   class="col-lg-3 o_light_label"/>
-                                            <field name="property_stock_picking_receivable_account_id"
-                                                   placeholder="Select 418"/>
-                                        </div>
-                                        <div class="row mt16">
-                                            <label for="property_stock_picking_payable_account_id"
-                                                   class="col-lg-3 o_light_label"/>
-                                            <field name="property_stock_picking_payable_account_id"
-                                                   placeholder="Select 408"/>
-                                        </div>
+
                                         <div class="row mt16">
                                             <label for="property_stock_usage_giving_account_id"
                                                    class="col-lg-3 o_light_label"/>
                                             <field name="property_stock_usage_giving_account_id"
                                                    placeholder="Select 8035"/>
                                         </div>
+
+                                        <div class="row mt16">
+                                            <label for="property_stock_picking_payable_account_id"
+                                                   class="col-lg-3 o_light_label"/>
+                                            <field name="property_stock_picking_payable_account_id"
+                                                   placeholder="Select 408"/>
+                                        </div>
+
+                                        <div class="row mt16">
+                                            <label for="property_stock_picking_receivable_account_id"
+                                                   class="col-lg-3 o_light_label"/>
+                                            <field name="property_stock_picking_receivable_account_id"
+                                                   placeholder="Select 418"/>
+                                        </div>
+
                                         <div class="row mt16">
                                             <label for="property_stock_picking_custody_account_id"
                                                    class="col-lg-3 o_light_label"/>
-                                            <field name="property_stock_picking_custody_account_id" placeholder=""/>
+                                            <field name="property_stock_picking_custody_account_id" placeholder="cont stock marfa primita in custodie (creeat nou extrabilantier)"/>
                                         </div>
+                                        
+                                        <div class="row mt16">
+                                            <label for="property_undeductible_tax_account_id"
+                                                   class="col-lg-3 o_light_label"/>
+                                            <field name="property_undeductible_tax_account_id" placeholder="cont pentru tva nedeductibil folosit in special in pierdere inventar"/>
+                                        </div>
+                                        
+                                        <div class="row mt16">
+                                            <label for="property_uneligible_tax_account_id"
+                                                   class="col-lg-3 o_light_label"/>
+                                            <field name="property_uneligible_tax_account_id" placeholder="cont pentru tva neexigibil in notele facute pentru 'Marfa in magazin'"/>
+                                        </div>
+
+                                        <div class="row mt16">
+                                            <label for="property_tax_cash_basis_journal_default_debit_account_id"
+                                                   class="col-lg-3 o_light_label"/>
+                                            <field name="property_tax_cash_basis_journal_default_debit_account_id" placeholder="debit account for tax cash basis'"/>
+                                        </div>
+
+
+                                        
                                         <div class="row mt16">
                                             <label for="property_stock_transfer_account_id"
                                                    class="col-lg-3 o_light_label"/>

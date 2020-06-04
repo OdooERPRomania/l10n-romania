@@ -50,6 +50,16 @@ class ProductCategory(models.Model):
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
+    property_stock_account_input_id = fields.Many2one(
+        'account.account', 'Stock Input Account', company_dependent=True,
+        domain="[('company_id', '=', allowed_company_ids[0]), ('deprecated', '=', False)]", check_company=True,
+        help="""Counterpart journal items for all incoming stock moves will be posted in this account, unless there is a specific valuation account
+                set on the source location. This is the default value for this product""")
+    property_stock_account_output_id = fields.Many2one(
+        'account.account', 'Stock Output Account', company_dependent=True,
+        domain="[('company_id', '=', allowed_company_ids[0]), ('deprecated', '=', False)]", check_company=True,
+        help="""When doing automated inventory valuation, counterpart journal items for all outgoing stock moves will be posted in this account,
+                unless there is a specific valuation account set on the destination location. This is the default value for this product""")
 
     def write(self, vals):
         if 'list_price' in vals:

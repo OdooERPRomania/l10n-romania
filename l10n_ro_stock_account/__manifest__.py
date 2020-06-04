@@ -13,11 +13,11 @@
     "license": "AGPL-3",
 
     'data': [
-#         'views/stock_view.xml',
-#         'views/stock_account_view.xml',
-#         'views/product_view.xml',
-#       #  'views/account_invoice_view.xml',
-#         'views/account_view.xml',
+# someting wrong         'views/stock_view.xml',
+         'views/stock_account_view.xml',
+         'views/product_view.xml',
+       #  'views/account_invoice_view.xml',
+         'views/account_view.xml',
 
     ],
     'installable': True,

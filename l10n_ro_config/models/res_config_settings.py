@@ -40,6 +40,17 @@ class ResConfigSettings(models.TransientModel):
 
     module_l10n_ro_account_balance = fields.Boolean('Romanian account balance',
                                                    help='')
+    property_customer_advance_account_id = fields.Many2one('account.account',
+                                                           related='company_id.property_customer_advance_account_id',readonly=False,
+                                                           string="Customer Advance Account",
+                                                           domain="[('internal_type', '=', 'receivable'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the customer advance account for the current partner on vouchers.")
+    property_supplier_advance_account_id = fields.Many2one('account.account',
+                                                           related='company_id.property_supplier_advance_account_id',readonly=False,
+                                                           string="Supplier Advance Account",
+                                                           domain="[('internal_type', '=', 'payable'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the supplier advance account for the current partner on vouchers.")
+
 # here must be some company related fields for type of compnay to know what type of balance to use
 
     module_l10n_ro_currency_reevaluation = fields.Boolean('Currency Reevaluation',
@@ -58,7 +69,37 @@ class ResConfigSettings(models.TransientModel):
                                                        'account move lines on the picking\n'
                                                        'Inventory account move lines...')
 
+    property_stock_usage_giving_account_id = fields.Many2one('account.account',
+                                                             related='company_id.property_stock_usage_giving_account_id',readonly=False,
+                                                             string="Usage Giving Account",
+                                                             domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                             help="This account will be used as the usage giving account in account move line")
+    property_stock_picking_payable_account_id = fields.Many2one('account.account',
+                                                                related='company_id.property_stock_picking_payable_account_id',readonly=False,
+                                                                string="Picking Account Payable",
+                                                                domain="[('company_id','=',company_id)]",
+                                                                help="This account will be used as the payable account for the current partner on stock picking notice")
+    property_stock_picking_receivable_account_id = fields.Many2one('account.account',
+                                                                   related='company_id.property_stock_picking_receivable_account_id',readonly=False,
+                                                                   string="Picking Account Receivable",
+                                                                   domain="[('company_id','=',company_id)]",
+                                                                   help="This account will be used as the receivable account for the current partner on stock picking notice")
+    property_undeductible_tax_account_id = fields.Many2one('account.account',
+                                                           related='company_id.property_undeductible_tax_account_id',readonly=False,
+                                                           string="Undeductible Tax Account",
+                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the undeductible tax account for account move line.")
+    property_uneligible_tax_account_id = fields.Many2one('account.account',
+                                                           related='company_id.property_uneligible_tax_account_id',readonly=False,
+                                                           string="Uneligible Tax Account",
+                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the uneligible tax account for account move line.")
 
+    property_tax_cash_basis_journal_default_debit_account_id = fields.Many2one('account.account',
+                                                           related='company_id.property_tax_cash_basis_journal_default_debit_account_id',readonly=False,
+                                                           string="Tax cash basis default debit account",
+                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the debit account for tax cash basis")
 
 
 
@@ -106,27 +147,7 @@ class ResConfigSettings(models.TransientModel):
                                                        string="Undeductible Account",
                                                        domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
                                                        help="This account will be used as the undeductible expense account for account move line.")
-    property_undeductible_tax_account_id = fields.Many2one('account.account',
-                                                           related='company_id.property_undeductible_tax_account_id',readonly=False,
-                                                           string="Undeductible Tax Account",
-                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
-                                                           help="This account will be used as the undeductible tax account for account move line.")
 
-    property_stock_picking_payable_account_id = fields.Many2one('account.account',
-                                                                related='company_id.property_stock_picking_payable_account_id',readonly=False,
-                                                                string="Picking Account Payable",
-                                                                domain="[('company_id','=',company_id)]",
-                                                                help="This account will be used as the payable account for the current partner on stock picking notice")
-    property_stock_picking_receivable_account_id = fields.Many2one('account.account',
-                                                                   related='company_id.property_stock_picking_receivable_account_id',readonly=False,
-                                                                   string="Picking Account Receivable",
-                                                                   domain="[('company_id','=',company_id)]",
-                                                                   help="This account will be used as the receivable account for the current partner on stock picking notice")
-    property_stock_usage_giving_account_id = fields.Many2one('account.account',
-                                                             related='company_id.property_stock_usage_giving_account_id',readonly=False,
-                                                             string="Usage Giving Account",
-                                                             domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
-                                                             help="This account will be used as the usage giving account in account move line")
     property_stock_picking_custody_account_id = fields.Many2one('account.account',
                                                                 related='company_id.property_stock_picking_custody_account_id',readonly=False,
                                                                 string="Picking Account Custody",
@@ -137,16 +158,6 @@ class ResConfigSettings(models.TransientModel):
                                                              string="Asset Reevaluation Account",
                                                              domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
                                                              help="This account will be used as the reevaluation asset account.")
-    property_customer_advance_account_id = fields.Many2one('account.account',
-                                                           related='company_id.property_customer_advance_account_id',readonly=False,
-                                                           string="Customer Advance Account",
-                                                           domain="[('internal_type', '=', 'receivable'),('company_id','=',company_id)]",
-                                                           help="This account will be used as the customer advance account for the current partner on vouchers.")
-    property_supplier_advance_account_id = fields.Many2one('account.account',
-                                                           related='company_id.property_supplier_advance_account_id',readonly=False,
-                                                           string="Supplier Advance Account",
-                                                           domain="[('internal_type', '=', 'payable'),('company_id','=',company_id)]",
-                                                           help="This account will be used as the supplier advance account for the current partner on vouchers.")
 
     property_stock_transfer_account_id = fields.Many2one('account.account',
                                                          related='company_id.property_stock_transfer_account_id',readonly=False,

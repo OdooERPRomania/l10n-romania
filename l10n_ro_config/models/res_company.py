@@ -30,7 +30,7 @@ class res_company(models.Model):
     _name = 'res.company'
     _inherit = 'res.company'
 
-    share_capital = fields.Float(string='Share Capital', digits=dp.get_precision('Account'), default=200)
+    share_capital = fields.Float(string='Share Capital', digits='Product Price', default=200)
     stamp_image = fields.Binary(string='Stamp image')
 
     property_stock_usage_giving_account_id = fields.Many2one(
@@ -87,4 +87,16 @@ class res_company(models.Model):
 
     property_vat_on_payment_position_id = fields.Many2one('account.fiscal.position','VAT on Payment')
     property_inverse_taxation_position_id = fields.Many2one('account.fiscal.position', 'Inverse Taxation')
+
+
+    property_uneligible_tax_account_id = fields.Many2one('account.account',
+                                                           string="Uneligible Tax Account",
+                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the uneligible tax account for account move line.")
+
+    property_tax_cash_basis_journal_default_debit_account_id = fields.Many2one('account.account',
+                                                           related="tax_cash_basis_journal_id.default_debit_account_id",readonly=False,
+                                                           string="Tax cash basis default debit account",
+                                                           domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
+                                                           help="This account will be used as the debit account for tax cash basis")
 
