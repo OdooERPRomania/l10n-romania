@@ -35,10 +35,33 @@ class ResConfigSettings(models.TransientModel):
     module_l10n_ro_account_period_close = fields.Boolean('Romania Account Period Close',
                                                          help='This allows you to close accounts on periods based on templates: Income, Expense, VAT...')
 
+    module_l10n_ro_partner_unique = fields.Boolean('Partners unique by Company, VAT, NRC',
+                                                   help='This allows you to set unique partners by company, VAT and NRC.')
+
+    module_l10n_ro_account_balance = fields.Boolean('Romanian account balance',
+                                                   help='')
+# here must be some company related fields for type of compnay to know what type of balance to use
+
+    module_l10n_ro_currency_reevaluation = fields.Boolean('Currency Reevaluation',
+                                                          help='This allows you to manage currency reevaluation of move lines recorded on foreign currency.\n'
+                                                               'To evaluate you have to check the "Allow Reevaluation" field on accounts.')
 
 
 #stock section
     use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
+    module_l10n_ro_stock = fields.Boolean('Romanian Stock',
+                                          help='Methods of usage giving and consumption')
+    module_l10n_ro_stock_account = fields.Boolean('Romanian Stock Accounting',
+                                                  help='This allows you to manage the Romanian adaptation for stock, including:\n'
+                                                       'New stock accounts on location to allow moving entry in accounting based on the stock move.\n'
+                                                       'The account entry will be generated from stock move instead of stock quant, link with the generated \n'
+                                                       'account move lines on the picking\n'
+                                                       'Inventory account move lines...')
+
+
+
+
+
 
 
 #     module_account_storno = fields.Boolean('Storno Accounting',
@@ -63,9 +86,6 @@ class ResConfigSettings(models.TransientModel):
                                                'also include history of creation of the asset.\n'
                                                'Method of reevaluation of assets.'
                                                'Import of the Chart of Asset Categories according with the legislation')
-    module_l10n_ro_currency_reevaluation = fields.Boolean('Currency Reevaluation',
-                                                          help='This allows you to manage currency reevaluation of move lines recorded on foreign currency.\n'
-                                                               'To evaluate you have to check the "Allow Reevaluation" field on accounts.')
     module_l10n_ro_invoice_line_not_deductible = fields.Boolean('Not Deductible Invoice Line',
                                                                 help='This allows you to manage not deductible supplier invoice line.')
     module_l10n_ro_invoice_report = fields.Boolean('Invoice and Voucher Report',
@@ -75,21 +95,11 @@ class ResConfigSettings(models.TransientModel):
     module_l10n_ro_siruta = fields.Boolean('Romanian Cities',
                                            help='This allows you to manage the Romanian Zones, States, Communes, Cities:\n'
                                                 'The address fields will contain city, commune, state, zone, country, zip.')
-    module_l10n_ro_stock = fields.Boolean('Romanian Stock',
-                                          help='Methods of usage giving and consumption')
-    module_l10n_ro_stock_account = fields.Boolean('Romanian Stock Accounting',
-                                                  help='This allows you to manage the Romanian adaptation for stock, including:\n'
-                                                       'New stock accounts on location to allow moving entry in accounting based on the stock move.\n'
-                                                       'The account entry will be generated from stock move instead of stock quant, link with the generated \n'
-                                                       'account move lines on the picking\n'
-                                                       'Inventory account move lines...')
     module_l10n_ro_stock_picking_report = fields.Boolean('Stock Picking Report',
                                                          help='This allows you to print Reports for Reception and Delivery')
     module_l10n_ro_zipcode = fields.Boolean('Romanian Zipcodes',
                                             help='This allows you to manage the Romanian zipcodes on addreses:\n'
                                                  'The address fields will be replaced by one location field including city, commune, state, zone, country, zip.')
-    module_l10n_ro_partner_unique = fields.Boolean('Partners unique by Company, VAT, NRC',
-                                                   help='This allows you to set unique partners by company, VAT and NRC.')
 
     property_undeductible_account_id = fields.Many2one('account.account',
                                                        related='company_id.property_undeductible_account_id',readonly=False,
