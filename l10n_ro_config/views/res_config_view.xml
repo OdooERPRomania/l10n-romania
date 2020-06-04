@@ -37,43 +37,91 @@
                     <div class="app_settings_block" data-string="Romania" string="Romania" data-key="l10n_ro_config"
                          groups="account.group_account_manager">
 
+                       <h2>Others</h2>
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_address_extended">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_l10n_ro_address_extended"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="module_l10n_ro_address_extended" />
+                                    <div class="text-muted" ></div>
+                                </div>
+                            </div>
+						
+						</div>
+
                         <h2>Accounting</h2>
 
                         <div class="row mt16 o_settings_container">
-                            <div class="col-xs-12 col-md-6 o_setting_box"
-                                 attrs="{'invisible': [('group_multi_currency', '=', False)]}">
+
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_fiscal_validation">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_l10n_ro_fiscal_validation"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="module_l10n_ro_fiscal_validation"/>
+                                    <div class="text-muted" >Install also vat_on_payment and partner_create_by_vat</div>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_partner_create_by_vat">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_l10n_ro_partner_create_by_vat"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="module_l10n_ro_partner_create_by_vat"/>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_vat_on_payment">
                                 <div class="o_setting_left_pane">
                                     <field name="module_l10n_ro_vat_on_payment"/>
                                 </div>
                                 <div class="o_setting_right_pane">
                                     <label for="module_l10n_ro_vat_on_payment" />
-                                    <div class="text-muted" id="module_currency_rate_update">
-                                        Invoice auto VAT on payment. Partner type from ANAF online db.
-                                    </div>
+                                    <div class="text-muted" />
                                 </div>
                             </div>
-<!-- 
 
-                            <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_account_report_journal">
                                 <div class="o_setting_left_pane">
-                                    <field name="module_l10n_ro_partner_create_by_vat"/>
+                                    <field name="module_l10n_ro_account_report_journal"/>
                                 </div>
                                 <div class="o_setting_right_pane">
-                                    <label string="Create partner by VAT"/>
+                                    <label for="module_l10n_ro_account_report_journal" />
+                                    <div class="text-muted" id="module_currency_rate_update"/>
                                 </div>
                             </div>
+
+                            <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_account_period_close">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_l10n_ro_account_period_close"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="module_l10n_ro_account_period_close" />
+                                    <div class="text-muted" ></div>
+                                </div>
+                            </div>
+
+
+
+
+ <!-- 
+
                             -->
 
-
-
-                            <div class="col-xs-12 col-md-6 o_setting_box">
+<!--                             <div class="col-xs-12 col-md-6 o_setting_box">
                                 <div class="o_setting_left_pane">
                                     <field name="module_l10n_ro_invoice_report"/>
                                 </div>
                                 <div class="o_setting_right_pane">
                                     <label for="module_l10n_ro_invoice_report"/>
                                 </div>
+                           
+
                             </div>
+ --> 
                             <div class="col-xs-12 col-md-6 o_setting_box">
                                 <div class="o_setting_left_pane"/>
                                 <div class="o_setting_right_pane">
@@ -163,51 +211,12 @@
                                     </div>
                                     <div class="content-group">
                                         <div class="mt16">
-<!--                                             <div class="row mt16">
-                                                <label for="property_trade_discount_received_account_id"
-                                                       class="col-lg-3 o_light_label"/>
-                                                <field name="property_trade_discount_received_account_id"
-                                                       placeholder="Select 609"/>
-                                            </div>
-                                             <div class="row mt16">
-                                                <label for="property_trade_discount_granted_account_id"
-                                                       class="col-lg-3 o_light_label"/>
-                                                <field name="property_trade_discount_granted_account_id"
-                                                       placeholder="Select 709"/>
-                                            </div>
- -->                                       </div>
+                                       </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!--
-                                                <h2>Trade discounts</h2>
-                                                <div class="row mt16 o_settings_container">
-                                                    <div class="col-xs-12 col-md-6 o_setting_box">
-                                                        <div class="o_setting_left_pane">
-
-                                                        </div>
-                                                        <div class="o_setting_right_pane">
-
-                                                            <div class="content-group" >
-
-                                                                <div class="row mt16">
-                                                                    <label for="property_trade_discount_received_account_id"
-                                                                           class="col-lg-3 o_light_label"/>
-                                                                    <field name="property_trade_discount_received_account_id" placeholder="Select 609"/>
-                                                                </div>
-                                                                <div class="row mt16">
-                                                                    <label for="property_trade_discount_granted_account_id"
-                                                                           class="col-lg-3 o_light_label"/>
-                                                                    <field name="property_trade_discount_granted_account_id" placeholder="Select 709"/>
-                                                                </div>
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                        -->
                     </div>
 
                 </xpath>

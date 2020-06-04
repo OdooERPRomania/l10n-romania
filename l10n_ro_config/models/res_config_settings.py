@@ -10,28 +10,46 @@ import csv
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
 
-    module_account_compensation = fields.Boolean('Account Compensation',
-                                                 help='This allows you to manage partners compensation on accounts marked to be reconciled.')
+#   in original invoice section near other currency update
+    module_currency_rate_update_RO_BNR = fields.Boolean('Currency Rate Update BNR',
+                                                 help='This allows you to manage the update of currency rate based on different provider, use BNR site.')
 
+#others section
+    module_l10n_ro_address_extended = fields.Boolean('Extended Address with staircase ..',
+                                                         help='')
+#accounting section
+    module_l10n_ro_fiscal_validation = fields.Boolean('Partners Fiscal Validation',
+                                                      help='This allows you to manage the vat subjected and vat on payment fields update:\n'
+                                                           'For Romanian partners based on ANAF data and www.openapi.ro webservice.\n'
+                                                           'For European partners based on VIES data.')
+    module_l10n_ro_partner_create_by_vat = fields.Boolean('Create Partners by VAT',
+                                                          help='This allows you to create partners based on VAT:\n'
+                                                               'Romanian partners will be create based on Ministry of Finance / openapi.ro Webservices Datas\n'
+                                                               'European partners will be create based on VIES Website Datas (for countries that allow). \n')
     module_l10n_ro_vat_on_payment = fields.Boolean('VAT_on_payment',
                                            help='This module will download data from ANAF site and when you give or receive a invoice will set fiscal position for VAT on payment')
 
-    
-    module_account_storno = fields.Boolean('Storno Accounting',
-                                           help='This allows you to manage the storno behaviour in accounting.')
+    module_l10n_ro_account_report_journal = fields.Boolean('Account report journal (Sale Purchase report)',
+                                           help='')
+    module_l10n_ro_account_period_close = fields.Boolean('Romania Account Period Close',
+                                                         help='This allows you to close accounts on periods based on templates: Income, Expense, VAT...')
 
-    module_currency_rate_update_RO_BNR = fields.Boolean('Currency Rate Update BNR',
-                                                 help='This allows you to manage the update of currency rate based on different provider, use BNR site.')
-    module_l10n_ro_account_bank_statement = fields.Boolean('Bank Statement Invoices',
-                                                           help='This allows you to manage imports in bank statement line of the invoices only.')
+
+
+#stock section
+    use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
+
+
+#     module_account_storno = fields.Boolean('Storno Accounting',
+#                                            help='This allows you to manage the storno behaviour in accounting.')
+
+#     module_l10n_ro_account_bank_statement = fields.Boolean('Bank Statement Invoices',
+#                                                            help='This allows you to manage imports in bank statement line of the invoices only.')
     module_l10n_ro_account_compensation_currency_update = fields.Boolean('Currency Difference on Compensations',
                                                                          help='This allows you to manage currency difference amounts on compensation.')
     module_l10n_ro_account_constrains = fields.Boolean('Account Constrains',
                                                        help='This will remove the constrains related to account journal, accounts with secondary currency.')
-    module_l10n_ro_account_period_close = fields.Boolean('Romania Account Period Close',
-                                                         help='This allows you to close accounts on periods based on templates: Income, Expense, VAT...')
     module_l10n_ro_account_report = fields.Boolean('Romania Accounting Reports',
                                                    help='This allows you to print reports according to legislation like: Sale/Purchase Journals, Trial Balance, D394..\n')
     module_l10n_ro_account_voucher_cash = fields.Boolean('Voucher to Cash Statement',
@@ -48,10 +66,6 @@ class ResConfigSettings(models.TransientModel):
     module_l10n_ro_currency_reevaluation = fields.Boolean('Currency Reevaluation',
                                                           help='This allows you to manage currency reevaluation of move lines recorded on foreign currency.\n'
                                                                'To evaluate you have to check the "Allow Reevaluation" field on accounts.')
-    module_l10n_ro_fiscal_validation = fields.Boolean('Partners Fiscal Validation',
-                                                      help='This allows you to manage the vat subjected and vat on payment fields update:\n'
-                                                           'For Romanian partners based on ANAF data and www.openapi.ro webservice.\n'
-                                                           'For European partners based on VIES data.')
     module_l10n_ro_invoice_line_not_deductible = fields.Boolean('Not Deductible Invoice Line',
                                                                 help='This allows you to manage not deductible supplier invoice line.')
     module_l10n_ro_invoice_report = fields.Boolean('Invoice and Voucher Report',
@@ -74,10 +88,6 @@ class ResConfigSettings(models.TransientModel):
     module_l10n_ro_zipcode = fields.Boolean('Romanian Zipcodes',
                                             help='This allows you to manage the Romanian zipcodes on addreses:\n'
                                                  'The address fields will be replaced by one location field including city, commune, state, zone, country, zip.')
-    module_l10n_ro_partner_create_by_vat = fields.Boolean('Create Partners by VAT',
-                                                          help='This allows you to create partners based on VAT:\n'
-                                                               'Romanian partners will be create based on Ministry of Finance / openapi.ro Webservices Datas\n'
-                                                               'European partners will be create based on VIES Website Datas (for countries that allow). \n')
     module_l10n_ro_partner_unique = fields.Boolean('Partners unique by Company, VAT, NRC',
                                                    help='This allows you to set unique partners by company, VAT and NRC.')
 
