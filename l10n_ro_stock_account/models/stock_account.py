@@ -19,62 +19,39 @@ class stock_location(models.Model):
     _name = "stock.location"
     _inherit = "stock.location"
 
-    # defined in l10n_ro_stock
-    #     usage = fields.Selection(selection_add=[('in_custody', 'In Custody'),
-    #                                             ('usage_giving', 'Usage Giving'),
-    #                                             ('consume', 'Consume')],
-    #
-    #                              help="""* Supplier Location: Virtual location representing the source location for products coming from your suppliers
-    #                        \n* View: Virtual location used to create a hierarchical structures for your warehouse, aggregating its child locations ; can't directly contain products
-    #                        \n* Internal Location: Physical locations inside your own warehouses,
-    #                        \n* Customer Location: Virtual location representing the destination location for products sent to your customers
-    #                        \n* Inventory: Virtual location serving as counterpart for inventory operations used to correct stock levels (Physical inventories)
-    #                        \n* Procurement: Virtual location serving as temporary counterpart for procurement operations when the source (supplier or production) is not known yet. This location should be empty when the procurement scheduler has finished running.
-    #                        \n* Production: Virtual counterpart location for production operations: this location consumes the raw material and produces finished products
-    #                        \n* Transit Location: Counterpart location that should be used in inter-companies or inter-warehouses operations
-    #                        \n* In Custody: Virtual location for products received in custody
-    #                        \n* Usage Giving: Virtual location for products given in usage
-    #                        \n* In Custody: Virtual location for products consumed beside production.
-    #                       """, index=True,
-    #                     ondelete={'in_custody':  lambda recs: recs.write({'usage': 'internal', 'active': False}),
-    #                               'usage_giving':  lambda recs: recs.write({'usage': 'internal', 'active': False}),
-    #                               'consume':  lambda recs: recs.write({'usage': 'internal', 'active': False}) },
-    #                       )
-    #
-    #     merchandise_type = fields.Selection([("store", "Store"), ("warehouse", "Warehouse")], string="Merchandise type",
-    #                                         default="warehouse")
-
-    # TO ADD - campurile sunt folosite pentru a putea seta conturi de intrare/iesire stock, ideal pentru companii in productie ce isi muta marfa in materii prime
-    # locatiile sunt dependente de companie. de ce urmatoarele campuri sunt si ele depdenente de companie ?
-    # campul standard valuation_in_account_id nu este company_dependent
-    # property_stock_account_input_location_id = fields.Many2one('account.account',
-    #                                                            string='Stock Input Account',
-    #                                                            help="When doing real-time inventory valuation, counterpart journal items for all incoming stock moves will be posted in this account, unless "
-    #                                                                 "there is a specific valuation account set on the source location. When not set on the product, the one from the product category is used.",
-    #                                                            company_dependent=True)
-    # campul standard este valuation_out_account_id
-    # property_stock_account_output_location_id = fields.Many2one('account.account',
-    #                                                             string='Stock Output Account',
-    #                                                             help="When doing real-time inventory valuation, counterpart journal items for all outgoing stock moves will be posted in this account, unless "
-    #                                                                  "there is a specific valuation account set on the destination location. When not set on the product, the one from the product category is used.",
-    #                                                             company_dependent=True)
+# field property_stock_account_input_location_id  is  valuation_in_account_id  defined in stock_account 
+#     valuation_in_account_id = fields.Many2one(
+#         'account.account', 'Stock Valuation Account (Incoming)',
+#         domain=[('internal_type', '=', 'other'), ('deprecated', '=', False)],
+#         help="Used for real-time inventory valuation. When set on a virtual location (non internal type), "
+#              "this account will be used to hold the value of products being moved from an internal location "
+#              "into this location, instead of the generic Stock Output Account set on the product. "
+#              "This has no effect for internal locations.")
+#                                                            string='Stock Input Account',
+#                                                            help="When doing real-time inventory valuation, counterpart journal items for all incoming stock moves will be posted in this account, unless "
+#                                                                 "there is a specific valuation account set on the source location. When not set on the product, the one from the product category is used.",
+# filed property_stock_account_output_location_id is  valuation_out_account_id
+#         help="Used for real-time inventory valuation. When set on a virtual location (non internal type), "
+#              "this account will be used to hold the value of products being moved out of this location "
+#              "and into an internal location, instead of the generic Stock Output Account set on the product. "
+#              "This has no effect for internal locations.")
+#                                                             string='Stock Output Account',
+#                                                             help="When doing real-time inventory valuation, counterpart journal items for all outgoing stock moves will be posted in this account, unless "
+#                                                                  "there is a specific valuation account set on the destination location. When not set on the product, the one from the product category is used.",
     property_account_creditor_price_difference_location_id = fields.Many2one(
         "account.account",
         string="Price Difference Account",
         help="This account will be used to value price difference between purchase price and cost price.",
-        company_dependent=True,
     )
     property_account_income_location_id = fields.Many2one(
         "account.account",
         string="Income Account",
         help="This account will be used to value outgoing stock using sale price.",
-        company_dependent=True,
     )
     property_account_expense_location_id = fields.Many2one(
         "account.account",
         string="Expense Account",
         help="This account will be used to value outgoing stock using cost price.",
-        company_dependent=True,
     )
 
 
