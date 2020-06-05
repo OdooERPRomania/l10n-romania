@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
 # ©  2008-2018 Fekete Mihai <mihai.fekete@forbiom.eu>
 #              Dorin Hongu <dhongu(@)gmail(.)com
 # See README.rst file on addons root folder for license details
 
-from odoo import models, fields
-
-
-
+from odoo import fields, models
 
 
 """
@@ -38,36 +34,48 @@ class purchase_order(models.Model):
         return res
 """
 
-class PurchaseOrderLine(models.Model):
-    _inherit = 'purchase.order.line'
 
+class PurchaseOrderLine(models.Model):
+    _inherit = "purchase.order.line"
+
+    # TO UPDATE  - use _get_product_accounts
     def _prepare_account_move_line(self, move):
 
         data = super(PurchaseOrderLine, self)._prepare_account_move_line(move)
 
         line = self
 
-        if line.product_id.purchase_method == 'receive':  # receptia in baza cantitatilor primite
-            if line.product_id.type == 'product':
+        if (
+            line.product_id.purchase_method == "receive"
+        ):  # receptia in baza cantitatilor primite
+            if line.product_id.type == "product":
                 notice = False
                 for picking in line.order_id.picking_ids:
                     if picking.notice:
                         notice = True
 
                 if notice:  # daca e stocabil si exista un document facut
-                    data['account_id'] = line.company_id.property_stock_picking_payable_account_id.id or \
-                                         line.product_id.categ_id.property_stock_account_input_categ_id.id or \
-                                         data['account_id']
+                    data["account_id"] = (
+                        line.company_id.property_stock_picking_payable_account_id.id
+                        or line.product_id.categ_id.property_stock_account_input_categ_id.id
+                        or data["account_id"]
+                    )
                 else:
-                    data['account_id'] =  line.product_id.categ_id.property_stock_account_input_categ_id.id or \
-                                         data['account_id']
+                    data["account_id"] = (
+                        line.product_id.categ_id.property_stock_account_input_categ_id.id
+                        or data["account_id"]
+                    )
 
             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
-                data['account_id'] =  line.product_id.categ_id.property_account_expense_categ_id.id or \
-                                     data['account_id']
+                data["account_id"] = (
+                    line.product_id.categ_id.property_account_expense_categ_id.id
+                    or data["account_id"]
+                )
         else:
-            if line.product_id.type == 'product':
-                data['account_id'] =  line.product_id.categ_id.property_stock_account_input_categ_id.id or \
-                                     data['account_id']
+            if line.product_id.type == "product":
+                data["account_id"] = (
+                    line.product_id.categ_id.property_stock_account_input_categ_id.id
+                    or data["account_id"]
+                )
 
         return data
