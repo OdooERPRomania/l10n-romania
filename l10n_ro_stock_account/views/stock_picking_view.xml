@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+        <record id="view_picking_add_notice_form" model="ir.ui.view">
+            <field name="name">view_picking_add_note_form</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field eval="42" name="priority"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='action_show_details']" position="after">
+                    <field name="picking_type_code" invisible="1"/>
+                    <field name="price_unit" attrs="{'invisible': [('picking_type_code','!=','incoming')]}"/>
+                </xpath>
+
+                        <field name="name" position="after">
+                        	<field name="notice"/>
+                        </field>
+<!--                 <page name="extra" position="after">
+                    <page string="Accounting Entries">
+                        <field nolabel="1" name="acc_move_line_ids" readonly="1"/>
+                    </page>
+                </page>
+ --> 
+             </field>
+        </record>
+
+        <record id="view_picking_internal_add_notice_search" model="ir.ui.view">
+            <field name="name">view_picking_internal_add_notice_search</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+            <field name="arch" type="xml">
+                    <filter name="cancel" position="after">
+                    	<filter name="notice" string="is notice (aviz)" domain="[('notice', '=', True)]" />
+                    </filter>
+            </field>
+        </record>
+</odoo>

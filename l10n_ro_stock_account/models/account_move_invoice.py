@@ -7,11 +7,12 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tools.float_utils import float_compare
 
 
-class AccountInvoice(models.Model):
+class AccountMove(models.Model):
     _inherit = "account.move"
 
     # nu trebuie sa se schimbe locatia la receptie
-    # stock_location_id = fields.Many2one('stock.location', readonly=True, states={'draft': [('readonly', False)]})
+    # exist stock_move_id in stock_account so we are not putting stock_location_id
+    # stock_location_id = fields.Many2one('stock.location', readonly=True, states={'draft': [('readonly', False)]}) 
 
     # @api.onchange('purchase_vendor_bill_id', 'purchase_id')
     # def _onchange_purchase_auto_complete(self):

@@ -10,64 +10,16 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 
-# ----------------------------------------------------------
-# Stock Location
-# ----------------------------------------------------------
-
-
-class stock_location(models.Model):
-    _name = "stock.location"
-    _inherit = "stock.location"
-
-# field property_stock_account_input_location_id  is  valuation_in_account_id  defined in stock_account 
-#     valuation_in_account_id = fields.Many2one(
-#         'account.account', 'Stock Valuation Account (Incoming)',
-#         domain=[('internal_type', '=', 'other'), ('deprecated', '=', False)],
-#         help="Used for real-time inventory valuation. When set on a virtual location (non internal type), "
-#              "this account will be used to hold the value of products being moved from an internal location "
-#              "into this location, instead of the generic Stock Output Account set on the product. "
-#              "This has no effect for internal locations.")
-#                                                            string='Stock Input Account',
-#                                                            help="When doing real-time inventory valuation, counterpart journal items for all incoming stock moves will be posted in this account, unless "
-#                                                                 "there is a specific valuation account set on the source location. When not set on the product, the one from the product category is used.",
-# filed property_stock_account_output_location_id is  valuation_out_account_id
-#         help="Used for real-time inventory valuation. When set on a virtual location (non internal type), "
-#              "this account will be used to hold the value of products being moved out of this location "
-#              "and into an internal location, instead of the generic Stock Output Account set on the product. "
-#              "This has no effect for internal locations.")
-#                                                             string='Stock Output Account',
-#                                                             help="When doing real-time inventory valuation, counterpart journal items for all outgoing stock moves will be posted in this account, unless "
-#                                                                  "there is a specific valuation account set on the destination location. When not set on the product, the one from the product category is used.",
-    property_account_creditor_price_difference_location_id = fields.Many2one(
-        "account.account",
-        string="Price Difference Account",
-        help="This account will be used to value price difference between purchase price and cost price.",
-    )
-    property_account_income_location_id = fields.Many2one(
-        "account.account",
-        string="Income Account",
-        help="This account will be used to value outgoing stock using sale price.",
-    )
-    property_account_expense_location_id = fields.Many2one(
-        "account.account",
-        string="Expense Account",
-        help="This account will be used to value outgoing stock using cost price.",
-    )
-
-
 class StockMove(models.Model):
     _name = "stock.move"
     _inherit = "stock.move"
 
-    # Exista standard account_move_ids
-    # acc_move_id = fields.Many2one('account.move', string='Account move', copy=False)
+    picking_type_code = fields.Selection(related='picking_id.picking_type_code', readonly=True,help="taken from stock_picking that is taken from stock_picking_type.code")
 
-    # la ce este bun acest camp ?
-    # TO REMOVE
-    acc_move_line_ids = fields.One2many(
-        "account.move.line", "stock_move_id", string="Account move lines"
-    )
 
+
+# I think that this filed is only used to know what accounts is going to take.
+# we are going to do a dictionary with source and destination location and based on this is going to tell what accounts to take        
     move_type = fields.Selection(
         [
             ("reception", "Reception"),
@@ -646,90 +598,3 @@ class StockMove(models.Model):
             move._account_entry_move()
 
 
-class stock_picking(models.Model):
-    _name = "stock.picking"
-    _inherit = "stock.picking"
-
-    acc_move_line_ids = fields.One2many(
-        "account.move.line", "stock_picking_id", string="Generated accounting lines"
-    )
-
-    # prin acest camp se indica daca un produs care e stocabil trece prin contul 408 / 418 la achizitie sau vanzare
-    # receptie/ livrare in baza de aviz
-    notice = fields.Boolean(
-        "Is a notice",
-        states={"done": [("readonly", True)], "cancel": [("readonly", True)]},
-        default=False,
-    )
-
-    def action_done(self):
-        for pick in self:
-            pick.write({"date_done": pick.date})
-        res = super(stock_picking, self).action_done()
-        return res
-
-    def action_cancel(self):
-        for pick in self:
-            for move in pick.move_lines:
-                if move.account_move_ids:
-                    move.account_move_ids.button_cancel()
-                    move.account_move_ids.unlink()
-        return super(stock_picking, self).action_cancel()
-
-    def action_unlink(self):
-        for pick in self:
-            for move in pick.move_lines:
-                if move.account_move_ids:
-                    move.account_move_ids.button_cancel()
-                    move.account_move_ids.unlink()
-        return super(stock_picking, self).action_unlink()
-
-
-class StockInventory(models.Model):
-    _inherit = "stock.inventory"
-
-    acc_move_line_ids = fields.One2many(
-        "account.move.line", "stock_inventory_id", string="Generated accounting lines"
-    )
-
-    def post_inventory(self):
-        res = super(StockInventory, self).post_inventory()
-        for inv in self:
-            acc_move_line_ids = self.env["account.move.line"]
-            for move in inv.move_ids:
-                for acc_move in move.account_move_ids:
-                    acc_move_line_ids |= acc_move.line_ids
-            acc_move_line_ids.write({"stock_inventory_id": inv.id})
-        return res
-
-    def action_cancel_draft(self):
-        for inv in self:
-            for move in inv.move_ids:
-                if move.account_move_ids:
-                    move.account_move_ids.cancel()
-                    move.account_move_ids.unlink()
-        return super(StockInventory, self).action_cancel_draft()
-
-    def unlink(self):
-        if any(inv.state not in ("draft", "cancel") for inv in self):
-            raise UserError(_("You can only delete draft inventory."))
-        return super(StockInventory, self).unlink()
-
-
-class StockReturnPickingLine(models.TransientModel):
-    _inherit = "stock.return.picking.line"
-
-    to_refund = fields.Boolean(default=True)
-
-
-class ReturnPicking(models.TransientModel):
-    _inherit = "stock.return.picking"
-
-    @api.model
-    def default_get(self, fields_list):
-        res = super(ReturnPicking, self).default_get(fields_list)
-        if "product_return_moves" in res:
-            product_return_moves = res["product_return_moves"]
-            for product_return_move in product_return_moves:
-                product_return_move[2]["to_refund"] = True
-        return res
