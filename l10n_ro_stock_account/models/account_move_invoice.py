@@ -18,7 +18,7 @@ class AccountMove(models.Model):
     # def _onchange_purchase_auto_complete(self):
     #     if not self.stock_location_id:
     #         self.stock_location_id = self.purchase_id.picking_type_id.default_location_dest_id
-    #     res = super(AccountInvoice, self)._onchange_purchase_auto_complete()
+    #     res = super()._onchange_purchase_auto_complete()
     #     return res
 
     # codul _prepare_invoice_line_from_po_line (care era in 11) se gaeste in purchase.line metoda   _prepare_account_move_line
@@ -27,9 +27,9 @@ class AccountMove(models.Model):
         # OVERRIDE
         # Create additional price difference lines for vendor bills.
         if self._context.get("move_reverse_cancel"):
-            return super(AccountInvoice, self).post()
+            return super().post()
         self.env["account.move.line"].create(self._invoice_line_move_line_get_diff())
-        return super(AccountInvoice, self).post()
+        return super().post()
 
     # in 13 nu mai exista invoice_line_move_line_get si am folosit
 
@@ -43,9 +43,9 @@ class AccountMove(models.Model):
         account_id = self.company_id.property_stock_picking_payable_account_id
         get_param = self.env["ir.config_parameter"].sudo().get_param
         # char daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
-        if not self.env.user.company_id.use_anglo_saxon:
+        if not self.env.user.company_id.anglo_saxon_accounting:
             for invoice in self:
-                if invoice.type in ["in_invoice", "in_refund"]:
+                if invoice.move_type in ["in_invoice", "in_refund"]:
                     diff_limit = float(get_param("stock_account.diff_limit", "2.0"))
 
                     # se adaga nota contabilia cu diferanta de pret la achizitie ?
@@ -98,7 +98,7 @@ class AccountMove(models.Model):
                             i_line.modify_stock_move_value(line_diff_value)
 
         for invoice in self:
-            if invoice.type in ["in_invoice", "in_refund"]:
+            if invoice.move_type in ["in_invoice", "in_refund"]:
                 res = invoice.trade_discount_distribution(res)
 
         for line in res:
@@ -166,7 +166,7 @@ class AccountMove(models.Model):
         return res
 
     # def finalize_invoice_move_lines(self, move_lines):
-    #     move_lines  = super(AccountInvoice, self).finalize_invoice_move_lines(move_lines)
+    #     move_lines  = super().finalize_invoice_move_lines(move_lines)
     #
     #     for line in move_lines:
     #         if self.type in ['in_invoice','out_refund']:
@@ -177,7 +177,8 @@ class AccountMove(models.Model):
     #     return move_lines
 
 
-class AccountInvoiceLine(models.Model):
+#class AccountInvoiceLine(models.Model):
+class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
 
     # TO REMOVE
@@ -236,7 +237,7 @@ class AccountInvoiceLine(models.Model):
                 and not self.env.context.get("allowed_change_product", False)
             ):
                 raise UserError(_("It is not allowed to change a stored product!"))
-        return super(AccountInvoiceLine, self)._onchange_product_id()
+        return super()._onchange_product_id()
 
     # @api.onchange('quantity')
     # def _onchange_quantity(self):
