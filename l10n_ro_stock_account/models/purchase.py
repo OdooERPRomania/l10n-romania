@@ -42,12 +42,12 @@ class PurchaseOrderLine(models.Model):
     def _prepare_account_move_line(self, move=False):
 
         data = super()._prepare_account_move_line(move)
-
+        
         line = self
+        print(f'initila_data={data}')
 
-        if (
-            line.product_id.purchase_method == "receive"
-        ):  # receptia in baza cantitatilor primite
+        if  line.product_id.purchase_method == "receive":  
+            # receptia in baza cantitatilor primite
             if line.product_id.type == "product":
                 notice = False
                 for picking in line.order_id.picking_ids:
@@ -62,20 +62,24 @@ class PurchaseOrderLine(models.Model):
                     )
                 else:
                     data["account_id"] = (
-                        line.product_id.categ_id.property_stock_account_input_categ_id.id
+                        line.product_id.property_stock_account_input_categ_id.id
+                        or line.product_id.categ_id.property_stock_account_input_categ_id.id
                         or data["account_id"]
                     )
 
             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
                 data["account_id"] = (
-                    line.product_id.categ_id.property_account_expense_categ_id.id
+                    line.product_id.property_stock_account_input_categ_id.id
+                    or line.product_id.categ_id.property_account_expense_categ_id.id
                     or data["account_id"]
                 )
         else:
             if line.product_id.type == "product":
                 data["account_id"] = (
-                    line.product_id.categ_id.property_stock_account_input_categ_id.id
+                    line.product_id.property_stock_account_input_categ_id.id
+                    or line.product_id.categ_id.property_stock_account_input_categ_id.id
                     or data["account_id"]
                 )
 
+        print(f'final_data={data}')
         return data
