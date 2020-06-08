@@ -39,7 +39,7 @@ class PurchaseOrderLine(models.Model):
     _inherit = "purchase.order.line"
 
     # TO UPDATE  - use _get_product_accounts
-    def _prepare_account_move_line(self, move):
+    def _prepare_account_move_line(self, move=False):
 
         data = super()._prepare_account_move_line(move)
 

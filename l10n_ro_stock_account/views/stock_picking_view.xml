@@ -13,7 +13,7 @@
                     <field name="price_unit" attrs="{'invisible': [('picking_type_code','!=','incoming')]}"/>
                 </xpath>
 
-                        <field name="name" position="after">
+                        <field name="backorder_id" position="after">
                         	<field name="notice"/>
                         </field>
 <!--                 <page name="extra" position="after">
