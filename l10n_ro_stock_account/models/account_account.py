@@ -76,4 +76,4 @@ class AccountMoveLine(models.Model):
             )
             if accounts["stock_input"]:
                 return accounts["stock_input"]
-        return super(AccountMoveLine, self)._get_computed_account()
+        return super()._get_computed_account()

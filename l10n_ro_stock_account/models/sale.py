@@ -11,13 +11,13 @@ class SaleOrderLine(models.Model):
 
     # TO REMOVE
     def _prepare_invoice(self):
-        invoice_vals = super(SaleOrderLine, self)._prepare_invoice()
+        invoice_vals = super()._prepare_invoice()
         invoice_vals["stock_location_id"] = self.warehouse_id.lot_stock_id.id
         return invoice_vals
 
     # TO UPDATE  - use _get_product_accounts
     def _prepare_invoice_line(self):
-        res = super(SaleOrderLine, self)._prepare_invoice_line()
+        res = super()._prepare_invoice_line()
         if self.product_id.invoice_policy == "delivery":
             notice = False
             for picking in self.order_id.picking_ids:

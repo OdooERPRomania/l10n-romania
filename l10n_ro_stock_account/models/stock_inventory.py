@@ -17,7 +17,7 @@ class StockInventory(models.Model):
     )
 
     def post_inventory(self):
-        res = super(StockInventory, self).post_inventory()
+        res = super().post_inventory()
         for inv in self:
             acc_move_line_ids = self.env["account.move.line"]
             for move in inv.move_ids:
@@ -32,11 +32,11 @@ class StockInventory(models.Model):
                 if move.account_move_ids:
                     move.account_move_ids.cancel()
                     move.account_move_ids.unlink()
-        return super(StockInventory, self).action_cancel_draft()
+        return super().action_cancel_draft()
 
     def unlink(self):
         if any(inv.state not in ("draft", "cancel") for inv in self):
             raise UserError(_("You can only delete draft inventory."))
-        return super(StockInventory, self).unlink()
+        return super().unlink()
 
 

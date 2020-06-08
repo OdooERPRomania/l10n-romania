@@ -74,12 +74,12 @@ class ProductTemplate(models.Model):
     def write(self, vals):
         if "list_price" in vals:
             self.do_change_list_price(vals["list_price"])
-        res = super(ProductTemplate, self).write(vals)
+        res = super().write(vals)
         return res
 
     # TO REMOVE - USE _get_product_accounts sa facem update la stock_input si stock_output cu cele din produs, poate si din locatie daca o putem da in context
     def get_product_accounts(self, fiscal_pos=None):
-        res = super(ProductTemplate, self).get_product_accounts(fiscal_pos)
+        res = super().get_product_accounts(fiscal_pos)
         notice = self.env.context.get("notice")
         if notice and self.purchase_method == "receive" and self.type == "product":
             res["stock_input"] = (
@@ -218,7 +218,7 @@ class ProductProduct(models.Model):
     # TO CHECK - METODA NU MAI EXISTA
     @api.model
     def _convert_prepared_anglosaxon_line(self, line, partner):
-        res = super(ProductProduct, self)._convert_prepared_anglosaxon_line(
+        res = super()._convert_prepared_anglosaxon_line(
             line, partner
         )
         res["stock_location_id"] = line.get("stock_location_id", False)
@@ -228,4 +228,4 @@ class ProductProduct(models.Model):
     # TO CHECK - METODA NU MAI EXISTA
     def _compute_stock_value(self):
         location = self.env.context.get("location")
-        return super(ProductProduct, self)._compute_stock_value()
+        return super()._compute_stock_value()

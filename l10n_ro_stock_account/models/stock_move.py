@@ -64,10 +64,10 @@ class StockMove(models.Model):
     def onchange_date(self):
         if self.picking_id:
             self.date_expected = self.picking_id.date
-        super(StockMove, self).onchange_date()
+        super().onchange_date()
 
     def action_done(self):
-        res = super(StockMove, self).action_done()
+        res = super().action_done()
         for move in self:
             if move.picking_id:
                 move.write({"date": move.picking_id.date})
@@ -78,7 +78,7 @@ class StockMove(models.Model):
             if move.account_move_ids:
                 move.account_move_ids.button_cancel()
                 move.account_move_ids.unlink()
-        return super(StockMove, self).action_cancel()
+        return super().action_cancel()
 
     # def _create_account_move_line(self, credit_account_id, debit_account_id, journal_id):
     # Nu are rost sa facem note pe aceleasi conturi
@@ -104,7 +104,7 @@ class StockMove(models.Model):
 
         permit_same_account = self.env.context.get("permit_same_account", False)
         if credit_account_id != debit_account_id or permit_same_account:
-            super(StockMove, self)._create_account_move_line(
+            super()._create_account_move_line(
                 credit_account_id,
                 debit_account_id,
                 journal_id,
@@ -197,9 +197,7 @@ class StockMove(models.Model):
     # Modificare conturi determinate standard
 
     def _get_accounting_data_for_valuation(self):
-        journal_id, acc_src, acc_dest, acc_valuation = super(
-            StockMove, self
-        )._get_accounting_data_for_valuation()
+        journal_id, acc_src, acc_dest, acc_valuation = super()._get_accounting_data_for_valuation()
 
         self.ensure_one()
         move = self
@@ -589,7 +587,7 @@ class StockMove(models.Model):
             move_type = self.get_move_type()
         if move_type and ("transfer" in move_type or "transit" in move_type):
             return True
-        return super(StockMove, self)._is_dropshipped()
+        return super()._is_dropshipped()
 
     def correction_valuation(self):
         for move in self:

@@ -18,7 +18,7 @@ class purchase_order(models.Model):
         create()
         '''
 
-        res = super(purchase_order, self)._prepare_order_line_move(  order, order_line, picking_id, group_id)
+        res = super()._prepare_order_line_move(  order, order_line, picking_id, group_id)
         product_uom = self.pool.get('uom.uom')
         price_unit = order_line.price_unit
         if order_line.product_uom.id != order_line.product_id.uom_id.id:
@@ -41,7 +41,7 @@ class PurchaseOrderLine(models.Model):
     # TO UPDATE  - use _get_product_accounts
     def _prepare_account_move_line(self, move):
 
-        data = super(PurchaseOrderLine, self)._prepare_account_move_line(move)
+        data = super()._prepare_account_move_line(move)
 
         line = self
 

@@ -27,7 +27,7 @@ class stock_picking(models.Model):
     def action_done(self):
         for pick in self:
             pick.write({"date_done": pick.date})
-        res = super(stock_picking, self).action_done()
+        res = super().action_done()
         return res
 
     def action_cancel(self):
@@ -36,7 +36,7 @@ class stock_picking(models.Model):
                 if move.account_move_ids:
                     move.account_move_ids.button_cancel()
                     move.account_move_ids.unlink()
-        return super(stock_picking, self).action_cancel()
+        return super().action_cancel()
 
     def action_unlink(self):
         for pick in self:
@@ -44,7 +44,7 @@ class stock_picking(models.Model):
                 if move.account_move_ids:
                     move.account_move_ids.button_cancel()
                     move.account_move_ids.unlink()
-        return super(stock_picking, self).action_unlink()
+        return super().action_unlink()
 
 class StockReturnPickingLine(models.TransientModel):
     _inherit = "stock.return.picking.line"
@@ -57,7 +57,7 @@ class ReturnPicking(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        res = super(ReturnPicking, self).default_get(fields_list)
+        res = super().default_get(fields_list)
         if "product_return_moves" in res:
             product_return_moves = res["product_return_moves"]
             for product_return_move in product_return_moves:
