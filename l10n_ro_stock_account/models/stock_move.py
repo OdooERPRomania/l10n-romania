@@ -20,7 +20,7 @@ class StockMove(models.Model):
 
 # I think that this filed is only used to know what accounts is going to take.
 # we are going to do a dictionary with source and destination location and based on this is going to tell what accounts to take        
-    move_type = fields.Selection(
+    stock_move_type = fields.Selection(
         [
             ("reception", "Reception"),
             ("reception_notice", "Reception with notice"),  # receptie pe baza de aviz
@@ -56,7 +56,7 @@ class StockMove(models.Model):
             ("consume_store", "Consume from Store"),
             ("production_store", "Reception in store from production"),
         ],
-        compute="_compute_move_type",
+        compute="_compute_stock_move_type",
     )
 
     # DE VAZUT DACA MAI TREBUIE - daca notele se fac cu picking_id.date
@@ -116,11 +116,11 @@ class StockMove(models.Model):
 
     # DE VAZUT TOATE CUM LE PUTEM SIMPLIFICA SI SA FIE MAI INTELIGIBILE
     @api.depends("location_id", "location_dest_id")
-    def _compute_move_type(self):
+    def _compute_stock_move_type(self):
         for move in self:
-            move.move_type = move.get_move_type()
+            move.stock_move_type = move.get_stock_move_type()
 
-    def get_move_type(self):
+    def get_stock_move_type(self):
 
         move = self
 
@@ -148,51 +148,51 @@ class StockMove(models.Model):
                         % move.product_id.display_name
                     )
 
-        move_type = ""
+        stock_move_type = ""
         if location_from.usage == "supplier" and location_to.usage == "internal":
-            move_type = "reception"
+            stock_move_type = "reception"
         elif location_from.usage == "internal" and location_to.usage == "supplier":
-            move_type = "reception_refund"
+            stock_move_type = "reception_refund"
         elif location_from.usage == "internal" and location_to.usage == "customer":
-            move_type = "delivery"
+            stock_move_type = "delivery"
         elif location_from.usage == "customer" and location_to.usage == "internal":
-            move_type = "delivery_refund"
+            stock_move_type = "delivery_refund"
         elif location_from.usage == "internal" and location_to.usage == "production":
-            move_type = "consume"
+            stock_move_type = "consume"
         elif location_from.usage == "inventory" and location_to.usage == "internal":
-            move_type = "inventory_plus"
+            stock_move_type = "inventory_plus"
         elif location_from.usage == "internal" and location_to.usage == "inventory":
-            move_type = "inventory_minus"
+            stock_move_type = "inventory_minus"
         elif location_from.usage == "production" and location_to.usage == "internal":
-            move_type = "production"
+            stock_move_type = "production"
         elif location_from.usage == "internal" and location_to.usage == "internal":
-            move_type = "transfer"
+            stock_move_type = "transfer"
         elif location_from.usage == "internal" and location_to.usage == "transit":
             if (
                 move.picking_id.partner_id.commercial_partner_id
                 != move.company_id.partner_id
             ):
-                move_type = "delivery"
+                stock_move_type = "delivery"
             else:
-                move_type = "transit_out"
+                stock_move_type = "transit_out"
         elif location_from.usage == "transit" and location_to.usage == "internal":
             if (
                 move.picking_id.partner_id.commercial_partner_id
                 != move.company_id.partner_id
             ):
-                move_type = "reception"
+                stock_move_type = "reception"
             else:
-                move_type = "transit_in"
+                stock_move_type = "transit_in"
 
         if (
             location_from.merchandise_type == "store"
             or location_to.merchandise_type == "store"
         ):
-            move_type += "_store"
+            stock_move_type += "_store"
         if notice:
-            move_type += "_notice"
+            stock_move_type += "_notice"
 
-        return move_type
+        return stock_move_type
 
     # Modificare conturi determinate standard
 
@@ -202,16 +202,16 @@ class StockMove(models.Model):
         self.ensure_one()
         move = self
 
-        # move_type = self.env.context.get('move_type', move.get_move_type())
-        move_type = self.env.context.get("move_type", move.move_type)
+        # stock_move_type = self.env.context.get('stock_move_type', move.get_stock_move_type())
+        stock_move_type = self.env.context.get("stock_move_type", move.stock_move_type)
 
-        if move_type == "inventory_plus_store":
+        if stock_move_type == "inventory_plus_store":
             if move.location_dest_id.valuation_in_account_id:
                 acc_valuation = move.location_dest_id.valuation_in_account_id
             if move.location_dest_id.property_account_expense_location_id:
                 acc_dest = move.location_dest_id.property_account_expense_location_id
                 acc_src = acc_dest
-        if move_type == "inventory_minus_store":
+        if stock_move_type == "inventory_minus_store":
             if move.location_id.valuation_out_account_id:
                 acc_valuation = move.location_id.valuation_out_account_id
             if (
@@ -221,21 +221,21 @@ class StockMove(models.Model):
                 acc_src = acc_dest
 
         if (
-            "delivery_store" in move_type
+            "delivery_store" in stock_move_type
         ):  # la livrarea din magazin se va folosi contrul specificat in locatie!
             if (
                 move.location_id.valuation_out_account_id
             ):  # produsele sunt evaluate dupa contrul de evaluare din locatie
                 acc_valuation = move.location_id.valuation_out_account_id
 
-        if "reception" in move_type and "notice" in move_type:
+        if "reception" in stock_move_type and "notice" in stock_move_type:
             acc_src = move.company_id.property_stock_picking_payable_account_id
             acc_dest = move.company_id.property_stock_picking_payable_account_id
 
         if (
-            "consume" in move_type
-            or "delivery" in move_type
-            or "production" in move_type
+            "consume" in stock_move_type
+            or "delivery" in stock_move_type
+            or "production" in stock_move_type
         ):
             acc_dest = move.product_id.property_account_expense_id
             if not acc_dest:
@@ -244,7 +244,7 @@ class StockMove(models.Model):
                 acc_dest = move.location_id.property_account_expense_location_id
             acc_src = acc_dest
 
-        if "inventory_plus" == move_type:
+        if "inventory_plus" == stock_move_type:
             # cont stoc la cont de cheltuiala
             acc_dest = move.product_id.property_account_expense_id
             if not acc_dest:
@@ -255,7 +255,7 @@ class StockMove(models.Model):
                 acc_dest = move.location_id.property_account_expense_location_id
             acc_src = acc_dest
 
-        if "inventory_minus" == move_type:
+        if "inventory_minus" == stock_move_type:
             # cont de cheltuiala la cont de stoc
             acc_src = move.product_id.property_account_income_id
             if not acc_src:
@@ -279,16 +279,16 @@ class StockMove(models.Model):
         )
         use_date = fields.Date.to_string(use_date)
 
-        move_type = self.get_move_type()
+        stock_move_type = self.get_stock_move_type()
 
-        move = self.with_context(force_period_date=use_date, move_type=move_type)
+        move = self.with_context(force_period_date=use_date, stock_move_type=stock_move_type)
 
         # nota contabila standard
-        # if 'transfer' not in move_type:
+        # if 'transfer' not in stock_move_type:
         _logger.info("Nota contabila standard")
         super(StockMove, move)._account_entry_move(qty, description, svl_id, cost)
 
-        if "transfer" in move_type:
+        if "transfer" in stock_move_type:
             # iesire  marfa din stoc
             _logger.info("Nota contabila transfer de stoc ")
             transfer_move = move.with_context(
@@ -302,13 +302,13 @@ class StockMove(models.Model):
             #     _logger.info("Nota contabila intrare stoc in vederea transferului ")
             #     move.with_context(stock_location_id=move.location_dest_id.id)._create_account_stock_to_stock(refund=True, permit_same_account=False)
 
-        if "transit_out" in move_type:
+        if "transit_out" in stock_move_type:
             _logger.info("Nota contabila iesire stoc in tranzit ")
             move._create_account_stock_to_stock(
                 refund=True,
                 stock_transfer_account=move.company_id.property_stock_transfer_account_id,
             )
-        if "transit_in" in move_type:
+        if "transit_in" in stock_move_type:
             _logger.info("Nota contabila intrare stoc in tranzit ")
             move._create_account_stock_to_stock(
                 refund=False,
@@ -316,29 +316,29 @@ class StockMove(models.Model):
             )
 
         if (
-            "delivery" in move_type and "notice" in move_type
+            "delivery" in stock_move_type and "notice" in stock_move_type
         ):  # livrare pe baza de aviz de facut nota contabila 418 = 70x
             _logger.info("Nota contabila livrare cu aviz")
-            move._create_account_delivery_notice(refund="refund" in move_type)
+            move._create_account_delivery_notice(refund="refund" in stock_move_type)
         if (
-            "reception" in move_type
-            or "transfer" in move_type
-            or "transit_in" in move_type
-        ) and "store" in move_type:
+            "reception" in stock_move_type
+            or "transfer" in stock_move_type
+            or "transit_in" in stock_move_type
+        ) and "store" in stock_move_type:
             _logger.info("Nota contabila receptie in magazin")
             move.with_context(
                 stock_location_id=move.location_dest_id.id
-            )._create_account_reception_in_store(refund="refund" in move_type)
-        if "delivery" in move_type and "store" in move_type:
+            )._create_account_reception_in_store(refund="refund" in stock_move_type)
+        if "delivery" in stock_move_type and "store" in stock_move_type:
             _logger.info("Nota contabila livrare din magazin ")
-            move._create_account_delivery_from_store(refund="refund" in move_type)
+            move._create_account_delivery_from_store(refund="refund" in stock_move_type)
 
-        if move_type == "inventory_plus_store":
+        if stock_move_type == "inventory_plus_store":
             _logger.info("Nota contabila plus de inventar in magazin")
             move.with_context(
                 stock_location_id=move.location_dest_id.id
             )._create_account_inventory_plus_in_store()
-        elif move_type == "inventory_minus_store":
+        elif stock_move_type == "inventory_minus_store":
             _logger.info("Nota contabila minus de inventar in magazin")
             move.with_context(
                 stock_location_id=move.location_id.id
@@ -528,7 +528,7 @@ class StockMove(models.Model):
             qty, cost, credit_account_id, debit_account_id, description
         )
 
-        if "refund" in self.move_type:
+        if "refund" in self.stock_move_type:
             if (
                 self.env["ir.module.module"]
                 .sudo()
@@ -546,8 +546,8 @@ class StockMove(models.Model):
 
         if not res:
             return res
-        # move_type = self.env.context.get('move_type', move.get_move_type())
-        move_type = self.env.context.get("move_type", move.move_type)
+        # stock_move_type = self.env.context.get('stock_move_type', move.get_stock_move_type())
+        stock_move_type = self.env.context.get("stock_move_type", move.stock_move_type)
 
         location_id = self.env.context.get("stock_location_id", False)
         location_dest_id = self.env.context.get("stock_location_dest_id", False)
@@ -576,16 +576,16 @@ class StockMove(models.Model):
                 acl[2]["stock_picking_id"] = move.picking_id.id
             if move.inventory_id:
                 acl[2]["stock_inventory_id"] = move.inventory_id.id
-            if "store" in move_type and acl[2]["quantity"] == 0:
+            if "store" in stock_move_type and acl[2]["quantity"] == 0:
                 acl[2]["ref"] = move.reference
 
         return res
 
     def _is_dropshipped(self):
-        move_type = self.move_type
-        if not move_type:
-            move_type = self.get_move_type()
-        if move_type and ("transfer" in move_type or "transit" in move_type):
+        stock_move_type = self.stock_move_type
+        if not stock_move_type:
+            stock_move_type = self.get_stock_move_type()
+        if stock_move_type and ("transfer" in stock_move_type or "transit" in stock_move_type):
             return True
         return super()._is_dropshipped()
 

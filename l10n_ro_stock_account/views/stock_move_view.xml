@@ -10,6 +10,7 @@
                 <field name="name" position="after">
                    <field name="picking_id" invisible="0"/>
                    <field name="picking_type_id" invisible="0"/>
+                   <field name="stock_move_type" invisible="0"/>
                    <field name="price_unit" attrs="{'invisible': [('picking_type_id','!=','incoming')]}"/>
                 </field>
             </field>
@@ -23,6 +24,7 @@
                 <field name="product_uom" position="after">
                     <field name="picking_id" invisible="0" optional="show"/>
                     <field name="picking_type_id" invisible="0" optional="show"/>
+                   <field name="stock_move_type" invisible="0" optional="show"/>
                     <field name="price_unit" attrs="{'readonly': [('picking_type_id','!=','incoming')]}"/>
                 </field>
             </field>
