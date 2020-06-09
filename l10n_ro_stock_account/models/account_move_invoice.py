@@ -40,9 +40,10 @@ class AccountMove(models.Model):
         add_diff_from_config = eval(  get_param("stock_account.add_diff", "False"))
 
         for i_line in invoice.invoice_line_ids:
+            if i_line.display_type in ['line_section', 'line_note']:
+                continue
             if i_line.is_price_diffrence:  
-                #delete the previous line differences not to have them multipe times
-                res+= [(2,i_line.id,0)]
+                res+= [(2,i_line.id,0)]             #delete the previous line differences not to have them multiple times
                 continue
             if i_line.product_id.cost_method == "standard":
                 add_diff = True  # daca pretul este standard se inregistreaza diferentele de pret.
