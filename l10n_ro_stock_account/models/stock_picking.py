@@ -11,17 +11,13 @@ class stock_picking(models.Model):
     _name = "stock.picking"
     _inherit = "stock.picking"
 
-    notice = fields.Boolean(string="This picking is noteice (aviz)")
-    acc_move_line_ids = fields.One2many(
-        "account.move.line", "stock_picking_id", string="Generated accounting lines"
-    )
-
     # prin acest camp se indica daca un produs care e stocabil trece prin contul 408 / 418 la achizitie sau vanzare
     # receptie/ livrare in baza de aviz
     notice = fields.Boolean(
         "Is a notice",
         states={"done": [("readonly", True)], "cancel": [("readonly", True)]},
         default=False,
+        help = "Prin acest camp se indica daca un produs care e stocabil trece prin contul 408 / 418 la achizitie sau vanzare \nreceptie/ livrare in baza de aviz"
     )
 
     def action_done(self):
