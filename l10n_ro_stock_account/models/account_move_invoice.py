@@ -11,78 +11,81 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
     def post(self):
-        # OVERRIDE
-        # Create additional price difference lines for vendor bills.
         if self._context.get("move_reverse_cancel"):
             return super().post()
-        res = self._invoice_line_move_line_get_diff()
-        self.line_ids = res
-#        self.env["account.move.line"].create()
+        # Create additional price difference lines for vendor bills.
+        for record in self:
+            if record.move_type in ["in_invoice", "in_refund"]:
+
+                # chiar daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
+                #if not self.env.user.company_id.anglo_saxon_accounting:
+                # the logical condition is to compute the price difference if this company has romanian chart_template_id
+                if record.company_id.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+                    invoice_stock_price_difference_move_lines = record._invoice_line_move_line_get_diff()
+                    record.line_ids = invoice_stock_price_difference_move_lines
         return super().post()
 
-    # in 13 nu mai exista invoice_line_move_line_get si am folosit
-
-    # DE VAZUT DACA E OK, SAU PUTEM FACE PRIN LANDED COST
     @api.model
     def _invoice_line_move_line_get_diff(self):
-
+        # se adaga linii contabile de diferente pret
+        self.ensure_one()
         res = []
 
         account_id = self.company_id.property_stock_picking_payable_account_id
         get_param = self.env["ir.config_parameter"].sudo().get_param
         # char daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
-        if not self.env.user.company_id.anglo_saxon_accounting:
-            for invoice in self:
-                if invoice.move_type in ["in_invoice", "in_refund"]:
-                    diff_limit = float(get_param("stock_account.diff_limit", "2.0"))
+        invoice=self
+        diff_limit = float(get_param("stock_account.diff_limit", "2.0"))
 
-                    # se adaga nota contabilia cu diferanta de pret la achizitie ?
+        add_diff_from_config = eval(  get_param("stock_account.add_diff", "False"))
 
-                    add_diff_from_config = eval(
-                        get_param("stock_account.add_diff", "False")
-                    )
+        for i_line in invoice.invoice_line_ids:
+            if i_line.is_price_diffrence:  
+                #delete the previous line differences not to have them multipe times
+                res+= [(2,i_line.id,0)]
+                continue
+            if i_line.product_id.cost_method == "standard":
+                add_diff = True  # daca pretul este standard se inregistreaza diferentele de pret.
+            else:
+                add_diff = add_diff_from_config
 
-                    for i_line in invoice.invoice_line_ids:
-                        if i_line.product_id.cost_method == "standard":
-                            add_diff = True  # daca pretul este standard se inregistreaza diferentele de pret.
-                        else:
-                            add_diff = add_diff_from_config
+            # daca linia a fost receptionata  de pe baza de aviz se seteaza contul 408 pe nota contabile
+            if account_id and i_line.account_id == account_id:
+                i_line = i_line.with_context(fix_stock_input=account_id)
+                add_diff = True  # trbuie sa adaug diferenta dintre recpetia pe baza de aviz si receptia din factura
 
-                        # daca linia a fost receptionata  de pe baza de aviz se seteaza contul 408 pe nota contabile
-                        if account_id and i_line.account_id == account_id:
-                            i_line = i_line.with_context(fix_stock_input=account_id)
-                            add_diff = True  # trbuie sa adaug diferenta dintre recpetia pe baza de aviz si receptia din factura
-
-# !!!!!!!!!!!!!!! de verificat ...
-                        price_diff_account = i_line.product_id.property_account_creditor_price_difference or i_line.product_id.categ_id.property_account_creditor_price_difference_categ
-                        diff_line = []
-                        received_qty = i_line.purchase_line_id.qty_received
-                        received_move = self.env['stock.move'].search([('purchase_line_id','=',i_line.purchase_line_id.id),('product_id','=',i_line.product_id.id),('company_id','=',i_line.company_id.id)])
-                        received_price = received_move.price_unit
-                        
-                        line_diff_value = received_qty * received_price - i_line.quantity * i_line.price_unit
+# !!!!!!!!!!!!!!! de verificat here is computing the diffrence between price/quantity reception and invoice
+            price_diff_account = i_line.product_id.property_account_creditor_price_difference or i_line.product_id.categ_id.property_account_creditor_price_difference_categ
+            diff_line = []
+            received_qty = i_line.purchase_line_id.qty_received
+            received_move = self.env['stock.move'].search([('purchase_line_id','=',i_line.purchase_line_id.id),('product_id','=',i_line.product_id.id),('company_id','=',i_line.company_id.id)])
+            received_price = received_move.price_unit
+            
+            line_diff_value = received_qty * received_price - i_line.quantity * i_line.price_unit
 #!!!!!!!!!!!!!!! de verificat ...
 
-                        if not float_is_zero(line_diff_value,2):
-                            name = f" Price difference={line_diff_value};received_qty={received_qty};received_price={received_price}"
-                            res +=  [(0, 0, {
-                                    'move_id':invoice.id,
-                                    'name': name,
-                                    'account_id': price_diff_account.id,  # must be verified
-                                    'debit': abs(line_diff_value),  # must be verified
-                                    'credit': 0,
-                                    'product_id': i_line.product_id.id,  #maybe mot ?
-                                }), (0, 0, {
-                                    'move_id':invoice.id,
-                                    'name': name,
-                                    'account_id': i_line.account_id.id,
-                                    'debit': 0,
-                                    'credit': abs(line_diff_value),
-                                    'product_id': i_line.product_id.id,  # maybe mot ?
-                                    })  ]
+            if not float_is_zero(line_diff_value,2):
+                name = f" Price difference={line_diff_value};received_qty={received_qty};received_price={received_price}"
+                res +=  [(0, 0, {
+                        'move_id':invoice.id,
+                        'name': name,
+                        'account_id': price_diff_account.id,  # must be verified
+                        'debit': abs(line_diff_value),  # must be verified
+                        'credit': 0,
+                        "is_price_diffrence":True, 
+                        'product_id': i_line.product_id.id,  #maybe mot ?
+                    }), (0, 0, {
+                        'move_id':invoice.id,
+                        'name': name,
+                        'account_id': i_line.account_id.id,
+                        'debit': 0,
+                        'credit': abs(line_diff_value),
+                        "is_price_diffrence":True,
+                        'product_id': i_line.product_id.id,  # maybe mot ?
+                        })  ]
 
-                            if line_diff_value > diff_limit:
-                                    raise UserError(  "The price difference for the product %s exceeds the %d limit " % (i_line.product_id.name, diff_limit))
+                if line_diff_value > diff_limit:
+                        raise UserError(  "The price difference for the product %s exceeds the %d limit " % (i_line.product_id.name, diff_limit))
 
         return res
 
@@ -91,6 +94,7 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
 
+    is_price_diffrence = fields.Boolean(help="When posting a invoice, if are differences of price/qunatity with the reception if exist will delete them, and recreate if neccesay")
 
     # @api.onchange('quantity')
     # def _onchange_quantity(self):
