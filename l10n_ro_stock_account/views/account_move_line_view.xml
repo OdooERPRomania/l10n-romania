@@ -9,11 +9,11 @@
                 <xpath expr="//notebook" position="inside">
                     <page string="Stock">
                         <group>
-                            <group string="Location">
+<!--                             <group string="Location">
                                 <field name="stock_location_id"/>
                                 <field name="stock_location_dest_id"/>
                             </group>
-                            <group string="Product">
+ -->                            <group string="Product">
                                 <field name="product_id"/>
                             </group>
                         </group>

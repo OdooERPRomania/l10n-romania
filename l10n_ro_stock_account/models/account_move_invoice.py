@@ -95,7 +95,7 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
 
-    is_price_diffrence = fields.Boolean(help="When posting a invoice, if are differences of price/qunatity with the reception if exist will delete them, and recreate if neccesay")
+    is_price_diffrence = fields.Boolean(help="When posting a invoice, if are differences of price/quantity with the reception if exist will delete them, and recreate if necessary")
 
     # @api.onchange('quantity')
     # def _onchange_quantity(self):
