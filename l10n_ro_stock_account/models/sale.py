@@ -9,13 +9,8 @@ from odoo.tools.float_utils import float_compare
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
-    # TO REMOVE
-    def _prepare_invoice(self):
-        invoice_vals = super()._prepare_invoice()
-        invoice_vals["stock_location_id"] = self.warehouse_id.lot_stock_id.id
-        return invoice_vals
-
-    # TO UPDATE  - use _get_product_accounts
+    # TO UPDATE  - use _get_product_accounts. 
+    # I think that here the function is ok
     def _prepare_invoice_line(self):
         res = super()._prepare_invoice_line()
         if self.product_id.invoice_policy == "delivery":

@@ -44,7 +44,10 @@ class PurchaseOrderLine(models.Model):
         data = super()._prepare_account_move_line(move)
         
         line = self
-        print(f'initila_data={data}')
+
+#     purchase_method =\
+#         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
+#         ('receive', 'On received quantities' Control bills based on received quantities
 
         if  line.product_id.purchase_method == "receive":  
             # receptia in baza cantitatilor primite
@@ -54,18 +57,18 @@ class PurchaseOrderLine(models.Model):
                     if picking.notice:
                         notice = True
 
-                if notice:  # daca e stocabil si exista un document facut
-                    data["account_id"] = (
-                        line.company_id.property_stock_picking_payable_account_id.id
-                        or line.product_id.categ_id.property_stock_account_input_categ_id.id
-                        or data["account_id"]
-                    )
-                else:
-                    data["account_id"] = (
-                        line.product_id.property_stock_account_input_categ_id.id
-                        or line.product_id.categ_id.property_stock_account_input_categ_id.id
-                        or data["account_id"]
-                    )
+                    if notice:  # daca e stocabil si exista un document facut  ???????????
+                        data["account_id"] = (
+                            line.company_id.property_stock_picking_payable_account_id.id
+                            or line.product_id.categ_id.property_stock_account_input_categ_id.id
+                            or data["account_id"]
+                        )
+                    else:
+                        data["account_id"] = (
+                            line.product_id.property_stock_account_input_categ_id.id
+                            or line.product_id.categ_id.property_stock_account_input_categ_id.id
+                            or data["account_id"]
+                        )
 
             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
                 data["account_id"] = (
@@ -73,7 +76,7 @@ class PurchaseOrderLine(models.Model):
                     or line.product_id.categ_id.property_account_expense_categ_id.id
                     or data["account_id"]
                 )
-        else:
+        else:  # Control bills based on ordered quantities
             if line.product_id.type == "product":
                 data["account_id"] = (
                     line.product_id.property_stock_account_input_categ_id.id
@@ -81,5 +84,4 @@ class PurchaseOrderLine(models.Model):
                     or data["account_id"]
                 )
 
-        print(f'final_data={data}')
         return data

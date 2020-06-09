@@ -11,32 +11,6 @@ from odoo.tools import float_is_zero
 class ProductCategory(models.Model):
     _inherit = "product.category"
 
-    # TO REMOVE
-    def propagate_account(self):
-        for categ in self:
-            childs = self.search([("id", "child_of", [categ.id])])
-
-            values = {
-                # Cont diferență de preț
-                "property_account_creditor_price_difference_categ": self.property_account_creditor_price_difference_categ.id,
-                # Cont de cheltuieli
-                "property_account_expense_categ_id": self.property_account_expense_categ_id.id,
-                # Cont de venituri
-                "property_account_income_categ_id": self.property_account_income_categ_id.id,
-                #  Cont Intrare Stoc
-                "property_stock_account_input_categ_id": self.property_stock_account_input_categ_id.id,
-                # Cont ieșire din stoc
-                "property_stock_account_output_categ_id": self.property_stock_account_output_categ_id.id,
-                # Cont Evaluare  Stoc
-                "property_stock_valuation_account_id": self.property_stock_valuation_account_id.id,
-                # Jurnal de stoc
-                "property_stock_journal": self.property_stock_journal.id,
-                # Metodă de cost
-                "property_cost_method": self.property_cost_method,
-                # property_valuation
-                "property_valuation": self.property_valuation,
-            }
-            childs.write(values)
 
     # TO REMOVE - DACA NU FOLOSIM CAMPUL - DE COMPLETAT CU UN EXTRABILANTIER
     @api.constrains(
@@ -77,21 +51,37 @@ class ProductTemplate(models.Model):
         res = super().write(vals)
         return res
 
-    # TO REMOVE - USE _get_product_accounts sa facem update la stock_input si stock_output cu cele din produs, poate si din locatie daca o putem da in context
-    def get_product_accounts(self, fiscal_pos=None):
-        res = super().get_product_accounts(fiscal_pos)
+
+    def _get_asset_accounts(self):
+        """special function to overwrite and give the stock_input and stock_output  that will be used in _prepare_invoice_line.
+        in odoo default this values were False and in super _prepare_invoice_line if their value is false is taking it from categ_id
+        """
+        res = {}
+        res['stock_input'] = self.property_stock_account_input_id
+        res['stock_output'] = self.property_stock_account_output_id
+        return res
+    
+    #  USE _get_product_accounts sa facem update la stock_input si stock_output cu cele din produs, poate si din locatie daca o putem da in context
+    def _get_product_accounts(self):
+        accounts = super()._get_product_accounts()
+        # now in accounts are stock_input/output in order from product and if not from category
+
         notice = self.env.context.get("notice")
+        location_id = self.env.context.get("location_id")
+
         if notice and self.purchase_method == "receive" and self.type == "product":
             res["stock_input"] = (
-                self.env.user.company_id.property_stock_picking_payable_account_id.id
-                or self.property_stock_account_input.id
-                or self.categ_id.property_stock_account_input_categ_id.id
+                (location_id.valuation_in_account_id.id if location_id else False)
+                or self.env.user.company_id.property_stock_picking_payable_account_id.id
             )
+        #else: how is in the case of puchase_method ==receive  ??
 
         fix_stock_input = self.env.context.get("fix_stock_input")
         if fix_stock_input:
             res["stock_input"] = fix_stock_input
         return res
+
+
 
     def do_change_list_price(self, new_price):
         """ Changes the Standard Price of Product and creates an account move accordingly."""
