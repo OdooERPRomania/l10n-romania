@@ -229,3 +229,13 @@ class ProductProduct(models.Model):
     def _compute_stock_value(self):
         location = self.env.context.get("location")
         return super()._compute_stock_value()
+
+# 202006 exists in account.move
+#     def _stock_account_anglo_saxon_reconcile_valuation(self, product=False):
+#         """ Reconciles the entries made in the interim accounts in anglosaxon accounting,
+#         reconciling stock valuation move lines with the invoice's.
+#         """
+# 
+#     def _stock_account_prepare_anglo_saxon_out_lines_vals(self):
+#         ''' Prepare values used to create the journal items (account.move.line) corresponding to the Cost of Good Sold
+#         lines (COGS) for customer invoices.
