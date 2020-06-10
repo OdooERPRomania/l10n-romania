@@ -21,36 +21,44 @@ class StockMove(models.Model):
     stock_move_type = fields.Selection(
         [
             ("reception", "Reception"),
-            ("reception_notice", "Reception with notice"),  # receptie pe baza de aviz
-            ("reception_store", "Reception in store"),  # receptie in magazin
             ("reception_refund", "Reception refund"),  # rambursare receptie
-            (
-                "reception_refund_notice",
-                "Reception refund with notice",
-            ),  # rabursare receptie facuta cu aviz
-            (
-                "reception_refund_store_notice",
-                "Reception refund in store with notice",
-            ),  # rabursare receptie in magazin facuta cu aviz
+
+            ("reception_notice", "Reception with notice"),  # receptie pe baza de aviz
+            ("reception_refund_notice", "Reception refund with notice",),  # rabursare receptie facuta cu aviz
+            
+            ("reception_store", "Reception in store"),  # receptie in magazin
+            ("reception_refund_store", "Reception regund in store"),  # rambursare receptie in magazin
+
+            
             ("reception_store_notice", "Reception in store with notice"),
+            ("reception_refund_store_notice", "Reception refund in store with notice",),  # rabursare receptie in magazin facuta cu aviz
+
             ("delivery", "Delivery"),
-            ("delivery_notice", "Delivery with notice"),
-            ("delivery_store", "Delivery from store"),
-            ("delivery_store_notice", "Delivery from store with notice"),
             ("delivery_refund", "Delivery refund"),
+
+            ("delivery_notice", "Delivery with notice"),
             ("delivery_refund_notice", "Delivery refund with notice"),
+
+            ("delivery_store", "Delivery from store"),
             ("delivery_refund_store", "Delivery refund in store"),
+
+            ("delivery_store_notice", "Delivery from store with notice"),
             ("delivery_refund_store_notice", "Delivery refund in store with notice"),
+
             ("consume", "Consume"),
+            
             ("inventory_plus", "Inventory plus"),
             ("inventory_plus_store", "Inventory plus in store"),
             ("inventory_minus", "Inventory minus"),
             ("inventory_minus_store", "Inventory minus in store"),
+            
             ("production", "Reception from production"),
+            
             ("transfer", "Transfer"),
             ("transfer_store", "Transfer in Store"),
             ("transfer_in", "Transfer in"),
             ("transfer_out", "Transfer out"),
+            
             ("consume_store", "Consume from Store"),
             ("production_store", "Reception in store from production"),
         ],
@@ -80,16 +88,7 @@ class StockMove(models.Model):
 
     # def _create_account_move_line(self, credit_account_id, debit_account_id, journal_id):
     # Nu are rost sa facem note pe aceleasi conturi
-    def _create_account_move_line(
-        self,
-        credit_account_id,
-        debit_account_id,
-        journal_id,
-        qty,
-        description,
-        svl_id,
-        cost,
-    ):
+    def _create_account_move_line( self, credit_account_id, debit_account_id, journal_id, qty, description, svl_id, cost,):
         if credit_account_id and not isinstance(credit_account_id, int):
             credit_account_id = credit_account_id.id
 
@@ -120,33 +119,20 @@ class StockMove(models.Model):
 
     def get_stock_move_type(self):
 
-        move = self
-
         location_from = self.location_id
         location_to = self.location_dest_id
-        notice = move.picking_id and move.picking_id.notice
+        notice = self.picking_id and sekf.picking_id.notice
 
         if notice:
-            if (
-                location_from.usage == "internal" and location_to.usage == "supplier"
-            ) or (
-                location_from.usage == "supplier" and location_to.usage == "internal"
-            ):
-                notice = move.product_id.purchase_method == "receive"
-
-            if (
-                location_from.usage == "internal" and location_to.usage == "customer"
-            ) or (
-                location_from.usage == "customer" and location_to.usage == "internal"
-            ):
-                if move.product_id.invoice_policy != "delivery":
+            if ( location_from.usage == "internal" and location_to.usage == "supplier") or (
+                location_from.usage == "supplier" and location_to.usage == "internal"):
+                notice = self.product_id.purchase_method == "receive"
+            if ( location_from.usage == "internal" and location_to.usage == "customer") or (
+                location_from.usage == "customer" and location_to.usage == "internal"):
+                if self.product_id.invoice_policy != "delivery":
                     notice = False
-                    _logger.warning(
-                        "Pentru produsul %s nu se poate utiliza livrare pe baza de aviz  "
-                        % move.product_id.display_name
-                    )
+                    _logger.warning(  "Pentru produsul %s nu se poate utiliza livrare pe baza de aviz  " % self.product_id.display_name )
 
-        stock_move_type = ""
         if location_from.usage == "supplier" and location_to.usage == "internal":
             stock_move_type = "reception"
         elif location_from.usage == "internal" and location_to.usage == "supplier":
@@ -166,102 +152,92 @@ class StockMove(models.Model):
         elif location_from.usage == "internal" and location_to.usage == "internal":
             stock_move_type = "transfer"
         elif location_from.usage == "internal" and location_to.usage == "transit":
-            if (
-                move.picking_id.partner_id.commercial_partner_id
-                != move.company_id.partner_id
-            ):
+            if ( self.picking_id.partner_id.commercial_partner_id != self.company_id.partner_id ):
                 stock_move_type = "delivery"
             else:
                 stock_move_type = "transit_out"
         elif location_from.usage == "transit" and location_to.usage == "internal":
-            if (
-                move.picking_id.partner_id.commercial_partner_id
-                != move.company_id.partner_id
-            ):
+            if ( self.picking_id.partner_id.commercial_partner_id != self.company_id.partner_id):
                 stock_move_type = "reception"
             else:
                 stock_move_type = "transit_in"
 
-        if (
-            location_from.merchandise_type == "store"
-            or location_to.merchandise_type == "store"
-        ):
+        if (location_from.merchandise_type == "store" or location_to.merchandise_type == "store"):
             stock_move_type += "_store"
         if notice:
             stock_move_type += "_notice"
 
         return stock_move_type
 
-    # Modificare conturi determinate standard
-
     def _get_accounting_data_for_valuation(self):
+        " Modificare conturi determinate standard"
+
         journal_id, acc_src, acc_dest, acc_valuation = super()._get_accounting_data_for_valuation()
 
         self.ensure_one()
-        move = self
 
-        # stock_move_type = self.env.context.get('stock_move_type', move.get_stock_move_type())
-        stock_move_type = self.env.context.get("stock_move_type", move.stock_move_type)
+        # stock_move_type = self.env.context.get('stock_move_type', self.get_stock_move_type())
+        stock_move_type = self.env.context.get("stock_move_type", self.stock_move_type)
 
         if stock_move_type == "inventory_plus_store":
-            if move.location_dest_id.valuation_in_account_id:
-                acc_valuation = move.location_dest_id.valuation_in_account_id
-            if move.location_dest_id.property_account_expense_location_id:
-                acc_dest = move.location_dest_id.property_account_expense_location_id
+            if self.location_dest_id.valuation_in_account_id:
+                acc_valuation = self.location_dest_id.valuation_in_account_id
+            if self.location_dest_id.property_account_expense_location_id:
+                acc_dest = self.location_dest_id.property_account_expense_location_id
                 acc_src = acc_dest
         if stock_move_type == "inventory_minus_store":
-            if move.location_id.valuation_out_account_id:
-                acc_valuation = move.location_id.valuation_out_account_id
+            if self.location_id.valuation_out_account_id:
+                acc_valuation = self.location_id.valuation_out_account_id
             if (
-                move.location_id.property_account_expense_location_id
+                self.location_id.property_account_expense_location_id
             ):  # 758800 Alte venituri din exploatare
-                acc_dest = move.location_id.property_account_expense_location_id
+                acc_dest = self.location_id.property_account_expense_location_id
                 acc_src = acc_dest
 
         if (
             "delivery_store" in stock_move_type
         ):  # la livrarea din magazin se va folosi contrul specificat in locatie!
             if (
-                move.location_id.valuation_out_account_id
+                self.location_id.valuation_out_account_id
             ):  # produsele sunt evaluate dupa contrul de evaluare din locatie
-                acc_valuation = move.location_id.valuation_out_account_id
+                acc_valuation = self.location_id.valuation_out_account_id
 
         if "reception" in stock_move_type and "notice" in stock_move_type:
-            acc_src = move.company_id.property_stock_picking_payable_account_id
-            acc_dest = move.company_id.property_stock_picking_payable_account_id
+            acc_src = self.company_id.property_stock_picking_payable_account_id
+            acc_dest = self.company_id.property_stock_picking_payable_account_id
 
         if (
             "consume" in stock_move_type
             or "delivery" in stock_move_type
             or "production" in stock_move_type
         ):
-            acc_dest = move.product_id.property_account_expense_id
+            acc_dest = self.product_id.property_account_expense_id
             if not acc_dest:
-                acc_dest = move.product_id.categ_id.property_account_expense_categ_id
-            if move.location_id.property_account_expense_location_id:
-                acc_dest = move.location_id.property_account_expense_location_id
+                acc_dest = self.product_id.categ_id.property_account_expense_categ_id
+            if self.location_id.property_account_expense_location_id:
+                acc_dest = self.location_id.property_account_expense_location_id
             acc_src = acc_dest
 
         if "inventory_plus" == stock_move_type:
             # cont stoc la cont de cheltuiala
-            acc_dest = move.product_id.property_account_expense_id
+            acc_dest = self.product_id.property_account_expense_id
             if not acc_dest:
-                acc_dest = move.product_id.categ_id.property_account_expense_categ_id
+                acc_dest = self.product_id.categ_id.property_account_expense_categ_id
             if (
-                move.location_id.property_account_expense_location_id
+                self.location_id.property_account_expense_location_id
             ):  # 758800 Alte venituri din exploatare
-                acc_dest = move.location_id.property_account_expense_location_id
+                acc_dest = self.location_id.property_account_expense_location_id
             acc_src = acc_dest
 
         if "inventory_minus" == stock_move_type:
             # cont de cheltuiala la cont de stoc
-            acc_src = move.product_id.property_account_income_id
+            acc_src = self.product_id.property_account_income_id
             if not acc_src:
-                acc_src = move.product_id.categ_id.property_account_income_categ_id
+                acc_src = self.product_id.categ_id.property_account_income_categ_id
             if (
-                move.location_dest_id.property_account_income_location_id
+                self.location_dest_id.property_account_income_location_id
             ):  # 758800 Alte venituri din exploatare
-                acc_src = move.location_dest_id.property_account_income_location_id
+                acc_src = self.location_dest_id.property_account_income_location_id
             acc_dest = acc_src
 
         # de regula se fac la pretul de stocare!
@@ -487,75 +463,57 @@ class StockMove(models.Model):
 
     def _create_account_delivery_notice(self, refund):
         move = self
-        accounts_data = move.product_id.product_tmpl_id.get_product_accounts()
+        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
         journal_id = accounts_data["stock_journal"].id
 
         acc_src = (
-            move.product_id.property_account_income_id
-            or move.product_id.categ_id.property_account_income_categ_id
+            self.product_id.property_account_income_id
+            or self.product_id.categ_id.property_account_income_categ_id
         )
-        if move.location_id.property_account_income_location_id:
-            acc_src = move.location_id.property_account_income_location_id
-        acc_dest = move.company_id.property_stock_picking_receivable_account_id
+        if self.location_id.property_account_income_location_id:
+            acc_src = self.location_id.property_account_income_location_id
+        acc_dest = self.company_id.property_stock_picking_receivable_account_id
         if not acc_dest:
             return
 
         if refund:
             acc_src, acc_dest = acc_dest, acc_src
 
-        valuation_amount = move.value
-        if move.sale_line_id:
-            sale_line = move.sale_line_id
+        valuation_amount = self.value
+        if self.sale_line_id:
+            sale_line = self.sale_line_id
             price_invoice = sale_line.price_subtotal / sale_line.product_uom_qty
             valuation_amount = price_invoice * abs(self.product_qty)
             valuation_amount = sale_line.order_id.currency_id.compute(
-                valuation_amount, move.company_id.currency_id
+                valuation_amount, self.company_id.currency_id
             )
 
-        move = move.with_context(force_valuation_amount=valuation_amount)
+        self.with_context(force_valuation_amount=valuation_amount)._create_account_move_line(acc_src, acc_dest, journal_id)
 
-        move._create_account_move_line(acc_src, acc_dest, journal_id)
-
-    def _prepare_account_move_line(
-        self, qty, cost, credit_account_id, debit_account_id, description
-    ):
+    def _prepare_account_move_line(self, qty, cost, credit_account_id, debit_account_id, description):
         self.ensure_one()
-
-        move = self
-        res = super(StockMove, move)._prepare_account_move_line(
-            qty, cost, credit_account_id, debit_account_id, description
-        )
+        res = super()._prepare_account_move_line(  qty, cost, credit_account_id, debit_account_id, description)
 
         if "refund" in self.stock_move_type:
-            if (
-                self.env["ir.module.module"]
-                .sudo()
-                .search([("name", "=", "account_storno"), ("state", "=", "installed")])
-            ):
-                if (
-                    move.product_id.categ_id.property_stock_journal.posting_policy
-                    == "storno"
-                ):
+            if (self.env["ir.module.module"].sudo().search([("name", "=", "account_storno"), ("state", "=", "installed")])):
+                if ( self.product_id.categ_id.property_stock_journal.posting_policy == "storno" ):
                     for acl in res:
-                        acl[2]["credit"], acl[2]["debit"] = (
-                            -acl[2]["debit"],
-                            -acl[2]["credit"],
-                        )
+                        acl[2]["credit"], acl[2]["debit"] = -acl[2]["debit"],-acl[2]["credit"]
 
         if not res:
             return res
-        # stock_move_type = self.env.context.get('stock_move_type', move.get_stock_move_type())
-        stock_move_type = self.env.context.get("stock_move_type", move.stock_move_type)
+        # stock_move_type = self.env.context.get('stock_move_type', self.get_stock_move_type())
+        stock_move_type = self.env.context.get("stock_move_type", self.stock_move_type)
 
         location_id = self.env.context.get("stock_location_id", False)
         location_dest_id = self.env.context.get("stock_location_dest_id", False)
-        if not location_id and move.location_dest_id.usage == "internal":
-            location_id = move.location_dest_id.id
-        if not location_id and move.location_id.usage == "internal":
-            location_id = move.location_id.id
+        if not location_id and self.location_dest_id.usage == "internal":
+            location_id = self.location_dest_id.id
+        if not location_id and self.location_id.usage == "internal":
+            location_id = self.location_id.id
 
         for acl in res:
-            acl[2]["stock_move_id"] = move.id
+            acl[2]["stock_move_id"] = self.id
             if location_id and not location_dest_id:
                 acl[2]["stock_location_id"] = location_id
             if location_id and location_dest_id:
@@ -564,19 +522,18 @@ class StockMove(models.Model):
                 else:
                     acl[2]["stock_location_dest_id"] = location_dest_id
             # else:
-            #     if move.location_id.usage == 'internal' and  move.location_dest_id.usage != 'internal':
-            #         acl[2]['stock_location_id'] = move.location_id.id
-            #     elif move.location_id.usage != 'internal' and move.location_dest_id.usage == 'internal':
-            #         acl[2]['stock_location_id'] = move.location_dest_id.id
-            # acl[2]['stock_location_id'] = move.location_id.id
-            # acl[2]['stock_location_dest_id'] = move.location_dest_id.id
-            if move.picking_id:
-                acl[2]["stock_picking_id"] = move.picking_id.id
-            if move.inventory_id:
-                acl[2]["stock_inventory_id"] = move.inventory_id.id
+            #     if self.location_id.usage == 'internal' and  self.location_dest_id.usage != 'internal':
+            #         acl[2]['stock_location_id'] = self.location_id.id
+            #     elif self.location_id.usage != 'internal' and self.location_dest_id.usage == 'internal':
+            #         acl[2]['stock_location_id'] = self.location_dest_id.id
+            # acl[2]['stock_location_id'] = self.location_id.id
+            # acl[2]['stock_location_dest_id'] = self.location_dest_id.id
+            if self.picking_id:
+                acl[2]["stock_picking_id"] = self.picking_id.id
+            if self.inventory_id:
+                acl[2]["stock_inventory_id"] = self.inventory_id.id
             if "store" in stock_move_type and acl[2]["quantity"] == 0:
-                acl[2]["ref"] = move.reference
-
+                acl[2]["ref"] = self.reference
         return res
 
     def _is_dropshipped(self):
