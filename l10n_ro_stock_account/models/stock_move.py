@@ -511,14 +511,14 @@ class StockMove(models.Model):
             location_id = self.location_id.id
 
         for acl in res:
-            acl[2]["stock_move_id"] = self.id
-            if location_id and not location_dest_id:
-                acl[2]["stock_location_id"] = location_id
-            if location_id and location_dest_id:
-                if acl[2]["credit"] != 0:
-                    acl[2]["stock_location_id"] = location_id
-                else:
-                    acl[2]["stock_location_dest_id"] = location_dest_id
+            acl[2]["move_id"] = self.id
+#             if location_id and not location_dest_id:
+#                 acl[2]["stock_location_id"] = location_id
+#             if location_id and location_dest_id:
+#                 if acl[2]["credit"] != 0:
+#                     acl[2]["stock_location_id"] = location_id
+#                 else:
+#                     acl[2]["stock_location_dest_id"] = location_dest_id
             # else:
             #     if self.location_id.usage == 'internal' and  self.location_dest_id.usage != 'internal':
             #         acl[2]['stock_location_id'] = self.location_id.id

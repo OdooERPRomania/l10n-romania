@@ -65,21 +65,18 @@ class ProductTemplate(models.Model):
     def _get_product_accounts(self):
         accounts = super()._get_product_accounts()
         # now in accounts are stock_input/output in order from product and if not from category
-
         notice = self.env.context.get("notice")
         location_id = self.env.context.get("location_id")
 
         if notice and self.purchase_method == "receive" and self.type == "product":
-            res["stock_input"] = (
-                (location_id.valuation_in_account_id.id if location_id else False)
+            accounts["stock_input"] = (  (location_id.valuation_in_account_id.id if location_id else False)
                 or self.env.user.company_id.property_stock_picking_payable_account_id.id
             )
-        #else: how is in the case of puchase_method ==receive  ??
 
         fix_stock_input = self.env.context.get("fix_stock_input")
         if fix_stock_input:
-            res["stock_input"] = fix_stock_input
-        return res
+            accounts["stock_input"] = fix_stock_input
+        return accounts
 
 
 
