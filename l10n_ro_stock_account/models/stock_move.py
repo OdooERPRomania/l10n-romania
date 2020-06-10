@@ -84,12 +84,31 @@ class StockMove(models.Model):
                 move.account_move_ids.unlink()
         return super().action_cancel()
 
-    # def _create_account_move_line(self, credit_account_id, debit_account_id, journal_id):
+# original odoo
+#     def _create_account_move_line(self, credit_account_id, debit_account_id, journal_id, qty, description, svl_id, cost):
+#         self.ensure_one()
+#         AccountMove = self.env['account.move'].with_context(default_journal_id=journal_id)
+# 
+#         move_lines = self._prepare_account_move_line(qty, cost, credit_account_id, debit_account_id, description)
+#         if move_lines:
+#             date = self._context.get('force_period_date', fields.Date.context_today(self))
+#             new_account_move = AccountMove.sudo().create({
+#                 'journal_id': journal_id,
+#                 'line_ids': move_lines,
+#                 'date': date,
+#                 'ref': description,
+#                 'stock_move_id': self.id,
+#                 'stock_valuation_layer_ids': [(6, None, [svl_id])],
+#                 'move_type': 'entry',
+#             })
+#             new_account_move.post()
+   
+    
+#    def _create_account_move_line(self, credit_account_id, debit_account_id, journal_id):
     # Nu are rost sa facem note pe aceleasi conturi
-    def _create_account_move_line( self, credit_account_id, debit_account_id, journal_id, qty, description, svl_id, cost,):
+    def _create_account_move_line( self, credit_account_id, debit_account_id, journal_id, qty, description, svl_id, cost):
         if credit_account_id and not isinstance(credit_account_id, int):
             credit_account_id = credit_account_id.id
-
         if debit_account_id and not isinstance(debit_account_id, int):
             debit_account_id = debit_account_id.id
 
@@ -119,13 +138,13 @@ class StockMove(models.Model):
 
         location_from = self.location_id
         location_to = self.location_dest_id
-        notice = self.picking_id and sekf.picking_id.notice
+        notice = self.picking_id and self.picking_id.notice
 
         if notice:
             if ( location_from.usage == "internal" and location_to.usage == "supplier") or (
                 location_from.usage == "supplier" and location_to.usage == "internal"):
                 notice = self.product_id.purchase_method == "receive"
-            if ( location_from.usage == "internal" and location_to.usage == "customer") or (
+            elif ( location_from.usage == "internal" and location_to.usage == "customer") or (
                 location_from.usage == "customer" and location_to.usage == "internal"):
                 if self.product_id.invoice_policy != "delivery":
                     notice = False
@@ -316,9 +335,7 @@ class StockMove(models.Model):
                 stock_location_id=move.location_id.id
             )._create_account_inventory_minus_in_store()
 
-    def _create_account_stock_to_stock(
-        self, refund, stock_transfer_account=None, permit_same_account=True
-    ):
+    def _create_account_stock_to_stock(self, refund, stock_transfer_account=None, permit_same_account=True):
         (
             journal_id,
             acc_src,
@@ -326,9 +343,7 @@ class StockMove(models.Model):
             acc_valuation,
         ) = self._get_accounting_data_for_valuation()
         forced_quantity = self.product_qty if not refund else -1 * self.product_qty
-        move = self.with_context(
-            forced_quantity=forced_quantity, permit_same_account=permit_same_account
-        )
+        move = self.with_context( forced_quantity=forced_quantity, permit_same_account=permit_same_account)
 
         if refund:
             # if acc_valuation == acc_dest :
@@ -460,7 +475,6 @@ class StockMove(models.Model):
         self._create_account_reception_in_store(not refund)
 
     def _create_account_delivery_notice(self, refund):
-        move = self
         accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
         journal_id = accounts_data["stock_journal"].id
 
@@ -477,7 +491,12 @@ class StockMove(models.Model):
         if refund:
             acc_src, acc_dest = acc_dest, acc_src
 
-        valuation_amount = self.value
+
+#???????????????? here when we are making the aviz are we giving the price?
+#        valuation_amount = self.price_unit * self.product_uom_qty #self.value
+#   here what price do I need to put? maybe from product?
+# if we are not giving the price than the price must be that from stock 
+        valuation_amount = self.product_id._prepare_out_svl_vals(quantity=self.product_uom_qty, company=self.company_id)['value']
         if self.sale_line_id:
             sale_line = self.sale_line_id
             price_invoice = sale_line.price_subtotal / sale_line.product_uom_qty
@@ -526,8 +545,10 @@ class StockMove(models.Model):
             #         acl[2]['stock_location_id'] = self.location_dest_id.id
             # acl[2]['stock_location_id'] = self.location_id.id
             # acl[2]['stock_location_dest_id'] = self.location_dest_id.id
-            if self.picking_id:
-                acl[2]["stock_picking_id"] = self.picking_id.id
+
+#20200610 stock_picking_id does not exist in account_move_line . 
+#             if self.picking_id:
+#                 acl[2]["stock_picking_id"] = self.picking_id.id
             if self.inventory_id:
                 acl[2]["stock_inventory_id"] = self.inventory_id.id
             if "store" in stock_move_type and acl[2]["quantity"] == 0:
