@@ -205,18 +205,15 @@ class StockMove(models.Model):
         if stock_move_type == "inventory_minus_store":
             if self.location_id.valuation_out_account_id:
                 acc_valuation = self.location_id.valuation_out_account_id
-            if (
-                self.location_id.property_account_expense_location_id
-            ):  # 758800 Alte venituri din exploatare
+            if  self.location_id.property_account_expense_location_id:  
+                # 758800 Alte venituri din exploatare
                 acc_dest = self.location_id.property_account_expense_location_id
                 acc_src = acc_dest
 
-        if (
-            "delivery_store" in stock_move_type
-        ):  # la livrarea din magazin se va folosi contrul specificat in locatie!
-            if (
-                self.location_id.valuation_out_account_id
-            ):  # produsele sunt evaluate dupa contrul de evaluare din locatie
+        if "delivery_store" in stock_move_type:  
+            # la livrarea din magazin se va folosi contrul specificat in locatie!
+            if  self.location_id.valuation_out_account_id:  
+                # produsele sunt evaluate dupa contrul de evaluare din locatie
                 acc_valuation = self.location_id.valuation_out_account_id
 
         if "reception" in stock_move_type and "notice" in stock_move_type:
@@ -240,9 +237,8 @@ class StockMove(models.Model):
             acc_dest = self.product_id.property_account_expense_id
             if not acc_dest:
                 acc_dest = self.product_id.categ_id.property_account_expense_categ_id
-            if (
-                self.location_id.property_account_expense_location_id
-            ):  # 758800 Alte venituri din exploatare
+            if self.location_id.property_account_expense_location_id:  
+                # 758800 Alte venituri din exploatare
                 acc_dest = self.location_id.property_account_expense_location_id
             acc_src = acc_dest
 
@@ -251,9 +247,8 @@ class StockMove(models.Model):
             acc_src = self.product_id.property_account_income_id
             if not acc_src:
                 acc_src = self.product_id.categ_id.property_account_income_categ_id
-            if (
-                self.location_dest_id.property_account_income_location_id
-            ):  # 758800 Alte venituri din exploatare
+            if self.location_dest_id.property_account_income_location_id:  
+                # 758800 Alte venituri din exploatare
                 acc_src = self.location_dest_id.property_account_income_location_id
             acc_dest = acc_src
 
@@ -476,6 +471,7 @@ class StockMove(models.Model):
 #        valuation_amount = self.price_unit * self.product_uom_qty #self.value
 #   here what price do I need to put? maybe from product?
 # if we are not giving the price than the price must be that from stock 
+# not used anymore ? the valuation_amount?
         valuation_amount = self.product_id._prepare_out_svl_vals(quantity=self.product_uom_qty, company=self.company_id)['value']
         if self.sale_line_id:
             sale_line = self.sale_line_id
