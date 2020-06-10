@@ -16,8 +16,6 @@ class StockMove(models.Model):
 
     picking_type_code = fields.Selection(related='picking_id.picking_type_code', readonly=True,help="taken from stock_picking that is taken from stock_picking_type.code")
 
-# I think that this filed is only used to know what accounts is going to take.
-# we are going to do a dictionary with source and destination location and based on this is going to tell what accounts to take        
     stock_move_type = fields.Selection(
         [
             ("reception", "Reception"),
