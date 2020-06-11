@@ -25,6 +25,20 @@
              </field>
         </record>
 
+
+        <record id="view_picking_add_notice_tree" model="ir.ui.view">
+            <field name="name">view_picking_add_notice_tree</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.vpicktree"/>
+            <field eval="42" name="priority"/>
+            <field name="arch" type="xml">
+                        <field name="origin" position="before">
+                        	<field name="notice" optional="show"/>
+                        </field>
+             </field>
+        </record>
+
+
         <record id="view_picking_internal_add_notice_search" model="ir.ui.view">
             <field name="name">view_picking_internal_add_notice_search</field>
             <field name="model">stock.picking</field>
