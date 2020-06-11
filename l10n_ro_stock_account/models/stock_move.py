@@ -299,10 +299,10 @@ class StockMove(models.Model):
 
         if "transit_out" in stock_move_type:
             _logger.info("Nota contabila iesire stoc in tranzit ")
-            move._create_account_stock_to_stock(refund=True, stock_transfer_account=move.company_id.property_stock_transfer_account_id, qty=qty, description=description, svl_id=svl_id, cost=cost)
+            move._create_account_stock_to_stock(refund=True, permit_same_account=True, stock_transfer_account=move.company_id.property_stock_transfer_account_id, qty=qty, description=description, svl_id=svl_id, cost=cost)
         elif "transit_in" in stock_move_type:
             _logger.info("Nota contabila intrare stoc in tranzit ")
-            move._create_account_stock_to_stock(refund=False, stock_transfer_account=move.company_id.property_stock_transfer_account_id, qty=qty, description=description, svl_id=svl_id, cost=cost)
+            move._create_account_stock_to_stock(refund=False, permit_same_account=True, stock_transfer_account=move.company_id.property_stock_transfer_account_id, qty=qty, description=description, svl_id=svl_id, cost=cost)
 
         if ( "delivery" in stock_move_type and "notice" in stock_move_type):  
             # livrare pe baza de aviz de facut nota contabila 418 = 70x
@@ -344,17 +344,17 @@ class StockMove(models.Model):
             aml = move._create_account_move_line(acc_valuation, acc_dest, journal_id, qty=forced_quantity, description=description, svl_id=svl_id, cost=cost)
         return aml
 
-    def _create_account_inventory_plus_in_store(self,description, svl_id, cost):
+    def _create_account_inventory_plus_in_store(self, qty, description, svl_id, cost):
         # inregistrare diferenta de pret
         # inregistrare taxa neexigibila
-        self._create_account_reception_in_store(description=description, svl_id=svl_id, cost=cost)
+        self._create_account_reception_in_store(refund=False,qty=qty, description=description, svl_id=svl_id, cost=cost)
 
-    def _create_account_inventory_minus_in_store(self,description, svl_id, cost):
+    def _create_account_inventory_minus_in_store(self,qty, description, svl_id, cost):
         # inregistrare diferenta de pret
         # inregistrare taxa neexigibila
-        self._create_account_reception_in_store(refund=True,description=description, svl_id=svl_id, cost=cost)
+        self._create_account_reception_in_store(refund=True, qty=qty, description=description, svl_id=svl_id, cost=cost)
 
-    def _create_account_reception_in_store(self, refund,description, svl_id, cost):
+    def _create_account_reception_in_store(self, refund, qty, description, svl_id, cost):
 #    def _create_account_reception_in_store(self, refund=False,description, svl_id, cost):
         """
         Receptions in location with inventory kept at list price
@@ -378,9 +378,9 @@ class StockMove(models.Model):
 
         acc_src = move.product_id.property_account_creditor_price_difference
         if not acc_src:
-            acc_src = ( move.product_id.categ_id.property_account_creditor_price_difference_categ )
+            acc_src =  move.product_id.categ_id.property_account_creditor_price_difference_categ 
         if move.location_dest_id.property_account_creditor_price_difference_location_id:
-            acc_src = (  move.location_dest_id.property_account_creditor_price_difference_location_id )
+            acc_src =  move.location_dest_id.property_account_creditor_price_difference_location_id 
         if not acc_src:
             raise UserError(
                 _(
