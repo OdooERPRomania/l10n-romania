@@ -60,7 +60,7 @@ class StockMove(models.Model):
             ("consume_store", "Consume from Store"),
             ("production_store", "Reception in store from production"),
         ],
-        compute="_compute_stock_move_type",
+        compute="_compute_stock_move_type", store=True
     )
 
     # DE VAZUT DACA MAI TREBUIE - daca notele se fac cu picking_id.date
@@ -453,10 +453,12 @@ class StockMove(models.Model):
         accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
         journal_id = accounts_data["stock_journal"].id
 
-        acc_src = (
+        acc_src = ( 
             self.product_id.property_account_income_id
             or self.product_id.categ_id.property_account_income_categ_id
-        )
+        ) #????
+        # not beeter:
+        #acc_src = accounts_data['income']
         if self.location_id.property_account_income_location_id:
             acc_src = self.location_id.property_account_income_location_id
         acc_dest = self.company_id.property_stock_picking_receivable_account_id
