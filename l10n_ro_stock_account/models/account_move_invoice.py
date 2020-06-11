@@ -11,6 +11,7 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
     def post(self):
+        """at post add account_move_lines with the goods price difference if can be the case"""
         if self._context.get("move_reverse_cancel"):
             return super().post()
         # Create additional price difference lines for vendor bills.
