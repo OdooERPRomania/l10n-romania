@@ -67,21 +67,21 @@ class PurchaseOrderLine(models.Model):
                     data["account_id"] = line.company_id.property_stock_picking_payable_account_id.id # or line.product_id.categ_id.property_stock_account_input_categ_id.id or data["account_id"]
                 else:
                     data["account_id"] = (
-                        line.product_id.property_stock_account_input_categ_id.id
-                        or line.product_id.categ_id.property_stock_account_input_categ_id.id
+                        line.product_id.property_stock_valuation_account_id.id
+                        or line.product_id.categ_id.property_stock_valuation_account_id.id
                         or data["account_id"]
                     )
 
             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
                 data["account_id"] = (
-                    line.product_id.property_stock_account_input_categ_id.id
+                    line.product_id.property_stock_valuation_account_id.id
                     or line.product_id.categ_id.property_account_expense_categ_id.id
                     or data["account_id"]
                 )
         else:  # Control bills based on ordered quantities
             if line.product_id.type == "product":
                 data["account_id"] = (
-                    line.product_id.property_stock_account_input_categ_id.id
+                    line.product_id.property_stock_valuation_account_id.id
                     or line.product_id.categ_id.property_stock_account_input_categ_id.id
                     or data["account_id"]
                 )
