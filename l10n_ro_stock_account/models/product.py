@@ -13,7 +13,7 @@ class ProductCategory(models.Model):
 
     hide_stock_in_out_account = fields.Boolean(compute="_is_romania_accounting",help="only for Romania, to hide stock_input and stock_output account because are the same as stock_valuation account")
 
-    @api.depends('property_stock_valuation_account_id')
+    @api.depends('name')
     def _is_romania_accounting(self):
         for record in self:
             if record.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
@@ -39,12 +39,11 @@ class ProductCategory(models.Model):
     def _onchange_stock_accouts(self):
         """ only for Romania, stock_valuation output and input are the same
         """
-        if self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
-            # is a romanian company:
-            for record in self:
-                    record.hide_stock_in_out_account = True
-                    record.property_stock_account_input_categ_id = record.property_stock_valuation_account_id
-                    record.property_stock_account_output_categ_id = record.property_stock_valuation_account_id
+        for record in self:
+            if record.hide_stock_in_out_account:
+                # is a romanian company:
+                record.property_stock_account_input_categ_id = record.property_stock_valuation_account_id
+                record.property_stock_account_output_categ_id = record.property_stock_valuation_account_id
 
 
 class ProductTemplate(models.Model):
