@@ -16,6 +16,7 @@
          'views/stock_move_view.xml',
          'views/stock_location_view.xml',
          'views/product_view.xml',
+         'views/product_category.xml',
          'views/account_move_view.xml',
          'views/account_move_line_view.xml',
          'views/stock_picking_view.xml',

@@ -98,6 +98,12 @@ class AccountMoveLine(models.Model):
 
     is_price_diffrence = fields.Boolean(help="When posting a invoice, tells if this line represent differences of price/quantity with the reception if exist will delete them, and recreate if necessary")
 
+#    !!!!!!!!!  maybe is_price_difference must be is_anglo_saxon_line  ?????????????
+# and the function at create must be  ???????????
+#_stock_account_prepare_anglo_saxon_out_lines_vals
+# to verify
+
+
     stock_inventory_id = fields.Many2one(
         "stock.inventory",
         string="Stock Inventory",

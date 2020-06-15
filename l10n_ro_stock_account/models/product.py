@@ -11,39 +11,70 @@ from odoo.tools import float_is_zero
 class ProductCategory(models.Model):
     _inherit = "product.category"
 
+    hide_stock_in_out_account = fields.Boolean(compute="_is_romania_accounting",help="only for Romania, to hide stock_input and stock_output account because are the same as stock_valuation account")
 
-    # TO REMOVE - DACA NU FOLOSIM CAMPUL - DE COMPLETAT CU UN EXTRABILANTIER
-    @api.constrains(
-        "property_stock_valuation_account_id",
-        "property_stock_account_output_categ_id",
-        "property_stock_account_input_categ_id",
-    )
+    @api.depends('property_stock_valuation_account_id')
+    def _is_romania_accounting(self):
+        for record in self:
+            if record.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+                record.hide_stock_in_out_account = True
+            else:
+                record.hide_stock_in_out_account = False
+
+    @api.constrains('property_stock_valuation_account_id', 'property_stock_account_output_categ_id', 'property_stock_account_input_categ_id')
     def _check_valuation_accouts(self):
-        # pentru Romania contul de evaluarea a stocului este egal cu cel intrare/iesire
-        pass
+        """ overwrite default constraint for Romania
+            for Romania, stock_valuation output and input are the same
+        """
+        if self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+            # is a romanian company:
+            for record in self:
+                    if record.property_stock_account_input_categ_id != record.property_stock_account_output_categ_id and \
+                       record.property_stock_account_input_categ_id != record.property_stock_valuation_account_id:
+                        raise UserError(f"At  {record.name} for Romania the stoc_input account must be the same as stock_output and the same as valuation")
+        else:
+            self.super()._check_valuation_accouts()
+
+    @api.onchange('property_stock_valuation_account_id', 'property_stock_account_output_categ_id', 'property_stock_account_input_categ_id')
+    def _onchange_stock_accouts(self):
+        """ only for Romania, stock_valuation output and input are the same
+        """
+        if self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+            # is a romanian company:
+            for record in self:
+                    record.hide_stock_in_out_account = True
+                    record.property_stock_account_input_categ_id = record.property_stock_valuation_account_id
+                    record.property_stock_account_output_categ_id = record.property_stock_valuation_account_id
 
 
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
-    property_stock_account_input_id = fields.Many2one(
-        "account.account",
-        "Stock Input Account",
+    property_stock_valuation_account_id = fields.Many2one("account.account", "Stock Valuation Account",
         company_dependent=True,
         domain="[('company_id', '=', allowed_company_ids[0]), ('deprecated', '=', False)]",
         check_company=True,
-        help="""Counterpart journal items for all incoming stock moves will be posted in this account, unless there is a specific valuation account
-                set on the source location. This is the default value for this product""",
+        help="In Romania accounting is only one account for valuation/input/output. If this value is set, we will use it, otherwise will use the category value. ",
     )
-    property_stock_account_output_id = fields.Many2one(
-        "account.account",
-        "Stock Output Account",
-        company_dependent=True,
-        domain="[('company_id', '=', allowed_company_ids[0]), ('deprecated', '=', False)]",
-        check_company=True,
-        help="""When doing automated inventory valuation, counterpart journal items for all outgoing stock moves will be posted in this account,
-                unless there is a specific valuation account set on the destination location. This is the default value for this product""",
-    )
+
+    def _get_product_accounts(self):
+        "default account value is taken from category. now values in product will overwrite those from category"
+        accounts = super()._get_product_accounts()
+ 
+        if  self.property_stock_valuation_account_id:
+            accounts.update({
+                'stock_input': self.property_stock_valuation_account_id,
+                'stock_output': self.property_stock_valuation_account_id,
+                'stock_valuation': self.property_stock_valuation_account_id,
+            })
+
+# ???????????????????
+#         fix_stock_input = self.env.context.get("fix_stock_input")
+#         if fix_stock_input:
+#             accounts["stock_input"] = fix_stock_input
+        return accounts
+
+
 
     def write(self, vals):
         if "list_price" in vals:
@@ -52,31 +83,6 @@ class ProductTemplate(models.Model):
         return res
 
 
-    def _get_asset_accounts(self):
-        """special function to overwrite and give the stock_input and stock_output  that will be used in _prepare_invoice_line.
-        in odoo default this values were False and in super _prepare_invoice_line if their value is false is taking it from categ_id
-        """
-        res = {}
-        res['stock_input'] = self.property_stock_account_input_id
-        res['stock_output'] = self.property_stock_account_output_id
-        return res
-    
-    #  USE _get_product_accounts sa facem update la stock_input si stock_output cu cele din produs, poate si din locatie daca o putem da in context
-    def _get_product_accounts(self):
-        accounts = super()._get_product_accounts()
-        # now in accounts are stock_input/output in order from product and if not from category
-        notice = self.env.context.get("notice")
-        location_id = self.env.context.get("location_id")
-
-        if notice and self.purchase_method == "receive" and self.type == "product":
-            accounts["stock_input"] = (  (location_id.valuation_in_account_id.id if location_id else False)
-                or self.env.user.company_id.property_stock_picking_payable_account_id.id
-            )
-
-        fix_stock_input = self.env.context.get("fix_stock_input")
-        if fix_stock_input:
-            accounts["stock_input"] = fix_stock_input
-        return accounts
 
 
 
