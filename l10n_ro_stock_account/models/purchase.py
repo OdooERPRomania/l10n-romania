@@ -43,30 +43,27 @@ class PurchaseOrderLine(models.Model):
             is setting account 408 that must be used if the goods where received with notice/aviz before the invoice"""
         
         data = super()._prepare_account_move_line(move)  
-        
-        return data
-        line = self
 
 #     purchase_method =
 #         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
 #         ('receive', 'On received quantities' Control bills based on received quantities
 
-        if  line.product_id.purchase_method == "receive":  
+        if  self.product_id.purchase_method == "receive":  
             # receptia in baza cantitatilor primite
-            if line.product_id.type == "product":
+            if self.product_id.type == "product":
                 notice = False
-                for picking in line.order_id.picking_ids:
+                for picking in self.order_id.picking_ids:
                     if picking.notice:
                         notice = True
                 if notice:  # daca e stocabil si exista un document facut  ???????????
-                    data["account_id"] = line.company_id.property_stock_picking_payable_account_id.id 
+                    data["account_id"] = self.company_id.property_stock_picking_payable_account_id.id 
                 else:
-                    data["account_id"] = line.product_id._get_product_accounts()["stock_valuation"]
+                    data["account_id"] = self.product_id._get_product_accounts()["stock_valuation"]
 # default behavior so we are not going to put aymore
 #             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
-#                 data["account_id"] = line.product_id.categ_id.property_account_expense_categ_id.id
+#                 data["account_id"] = self.product_id.categ_id.property_account_expense_categ_id.id
         else:  # Control bills based on ordered quantities
-            if line.product_id.type == "product":
-                data["account_id"] = line.product_id._get_product_accounts()["stock_valuation"]
+            if self.product_id.type == "product":
+                data["account_id"] = self.product_id._get_product_accounts()["stock_valuation"]
 
         return data
