@@ -34,7 +34,7 @@ class AccountMove(models.Model):
 
         account_id = self.company_id.property_stock_picking_payable_account_id
         get_param = self.env["ir.config_parameter"].sudo().get_param
-        # char daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
+        # chiar daca nu este sistem anglo saxon diferentele de pret dintre receptie si factura trebuie inregistrate
         invoice=self
         diff_limit = float(get_param("stock_account.diff_limit", "2.0"))
 
@@ -57,7 +57,11 @@ class AccountMove(models.Model):
                 add_diff = True  # trbuie sa adaug diferenta dintre recpetia pe baza de aviz si receptia din factura
 
 # !!!!!!!!!!!!!!! de verificat here is computing the diffrence between price/quantity reception and invoice
-            price_diff_account = i_line.product_id.property_account_creditor_price_difference or i_line.product_id.categ_id.property_account_creditor_price_difference_categ
+            price_diff_account = i_line.product_id.property_account_creditor_price_difference
+            if not price_diff_account:
+                price_diff_account = i_line.product_id.categ_id.property_account_creditor_price_difference_categ
+            if not price_diff_account:
+                raise UserError(_('Configuration error. Please configure the price difference account on the product or its category to process this operation.')+f"product.name ={i_line.product_id.name}")
             diff_line = []
             received_qty = i_line.purchase_line_id.qty_received
             received_move = self.env['stock.move'].search([('purchase_line_id','=',i_line.purchase_line_id.id),('product_id','=',i_line.product_id.id),('company_id','=',i_line.company_id.id)])

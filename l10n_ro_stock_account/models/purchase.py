@@ -38,52 +38,35 @@ class purchase_order(models.Model):
 class PurchaseOrderLine(models.Model):
     _inherit = "purchase.order.line"
 
-    # TO UPDATE  - use _get_product_accounts
     def _prepare_account_move_line(self, move=False):
         """modify the account if this inovice is for a notice/aviz stock movement that hapend before
-            is setting account 408 that must be used if the goods where received wiht notice/aviz before the invoice"""
+            is setting account 408 that must be used if the goods where received with notice/aviz before the invoice"""
         
-        data = super()._prepare_account_move_line(move)
+        data = super()._prepare_account_move_line(move)  
         
+        return data
         line = self
 
-#     purchase_method =\
+#     purchase_method =
 #         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
 #         ('receive', 'On received quantities' Control bills based on received quantities
 
         if  line.product_id.purchase_method == "receive":  
             # receptia in baza cantitatilor primite
-            
-            # vazut sa pun contul 
-            
             if line.product_id.type == "product":
                 notice = False
                 for picking in line.order_id.picking_ids:
                     if picking.notice:
                         notice = True
-
-                
                 if notice:  # daca e stocabil si exista un document facut  ???????????
-                    data["account_id"] = line.company_id.property_stock_picking_payable_account_id.id # or line.product_id.categ_id.property_stock_account_input_categ_id.id or data["account_id"]
+                    data["account_id"] = line.company_id.property_stock_picking_payable_account_id.id 
                 else:
-                    data["account_id"] = (
-                        line.product_id.property_stock_valuation_account_id.id
-                        or line.product_id.categ_id.property_stock_valuation_account_id.id
-                        or data["account_id"]
-                    )
-
-            else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
-                data["account_id"] = (
-                    line.product_id.property_stock_valuation_account_id.id
-                    or line.product_id.categ_id.property_account_expense_categ_id.id
-                    or data["account_id"]
-                )
+                    data["account_id"] = line.product_id._get_product_accounts()["stock_valuation"]
+# default behavior so we are not going to put aymore
+#             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
+#                 data["account_id"] = line.product_id.categ_id.property_account_expense_categ_id.id
         else:  # Control bills based on ordered quantities
             if line.product_id.type == "product":
-                data["account_id"] = (
-                    line.product_id.property_stock_valuation_account_id.id
-                    or line.product_id.categ_id.property_stock_account_input_categ_id.id
-                    or data["account_id"]
-                )
+                data["account_id"] = line.product_id._get_product_accounts()["stock_valuation"]
 
         return data
