@@ -63,22 +63,20 @@ production_store", "Reception in store from production"
 """,
         default="")
 
-    def action_cancel(self):
+    def _action_cancel(self):
         for move in self:
             if move.account_move_ids:
                 move.account_move_ids.button_cancel()
                 move.account_move_ids.unlink()
-        return super().action_cancel()
+        return super()._action_cancel()
 
 
     def _get_accounting_data_for_valuation(self):
         " Modificare conturi determinate standard"
-
+        self.ensure_one()
+        self = self.with_company(self.company_id)
         journal_id, acc_src, acc_dest, acc_valuation = super()._get_accounting_data_for_valuation()
 
-        self.ensure_one()
-
-        # stock_move_type = self.env.context.get('stock_move_type', self.get_stock_move_type())
         stock_move_type = self.env.context.get("stock_move_type", self.stock_move_type)
 
         if stock_move_type == "inventory_plus_store":
@@ -177,18 +175,21 @@ production_store", "Reception in store from production"
                 stock_move_type += "_reception_refund"
             elif location_from.usage == "customer" and location_to.usage == "internal":
                 stock_move_type += "_delivery_refund"
-                
+            # here we just need to call    _reverse_moves(self, default_values_list=None, cancel=False) if exist account moves on orginal stock move:
                 
         elif location_from.usage == "supplier":
             if  location_to.usage == "internal":
                 stock_move_type +=  "_reception"
                 if notice:
                     self.stock_move_type = stock_move_type
+#                     on all created stock_moves we must make this and put this stock_move 
+#                     _reverse_moves
                     self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 elif store:
                     self.stock_move_type = stock_move_type
                     self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
-                    
+                    self._create_account_delivery_from_store(refund="refund" in stock_move_type, qty=qty ,description=description, svl_id=svl_id, cost=cost)
+
                 else:
                     _logger.info(f"Nici o nota contabila delivery pt ca e in factura 371+4426 = 401")
                     self.stock_move_type = stock_move_type
@@ -244,7 +245,6 @@ production_store", "Reception in store from production"
         if stock_move_type == stock_move_type_initial:
             raise UserError(f"Something is wrong at creating stock_move account entries.\nUnknown operation for location_from={location_from.complete_name} location_to={location_to.complete_name};\nlocation_from.usage={location_from.usage} location_to.usage={location_to.usage} ")
         self.stock_move_type = stock_move_type
-        print(f"till here is the code. stock_move_type={stock_move_type}")
         return
 
 
@@ -311,7 +311,7 @@ production_store", "Reception in store from production"
         self._create_account_reception_in_store(refund=True, qty=qty, description=description, svl_id=svl_id, cost=cost)
 
     def _create_account_delivery_14(self, qty ,description, svl_id, cost):
-        " Livrare produse finite cu aviz (notice=True): 418 = 701"
+        """  # Create account moves for deliveries with notice (e.g. 418 = 707)"""
         accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
         acc_src = self.company_id.property_stock_picking_receivable_account_id.id
         acc_dest = accounts_data['stock_valuation'].id
@@ -327,6 +327,7 @@ production_store", "Reception in store from production"
         acc_src = self.company_id.property_stock_picking_payable_account_id.id
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
+
         # is creating a account_move type entry and  corresponding account_move_lines
         self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
 

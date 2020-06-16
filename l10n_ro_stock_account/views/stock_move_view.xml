@@ -13,6 +13,12 @@
                    <field name="stock_move_type" invisible="0"/>
                    <field name="price_unit" attrs="{'invisible': [('picking_type_id','!=','incoming')]}"/>
                 </field>
+				<group name="linked_group" position="before">
+					<group>
+						<field name="move_line_ids"/>
+					</group>
+				</group>
+
             </field>
         </record> 
        
