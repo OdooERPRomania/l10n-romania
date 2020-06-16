@@ -43,6 +43,8 @@ class PurchaseOrderLine(models.Model):
             is setting account 408 that must be used if the goods where received with notice/aviz before the invoice"""
         
         data = super()._prepare_account_move_line(move)  
+#I think that     408000    Furnizori - facturi nesosite  must be  Current Liabilities    ​            
+#  it can not be selected in account-move_line  because is anything beside  receivable payable 
 
 #     purchase_method =
 #         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
