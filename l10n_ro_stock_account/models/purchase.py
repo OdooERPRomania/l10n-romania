@@ -43,8 +43,9 @@ class PurchaseOrderLine(models.Model):
             is setting account 408 that must be used if the goods where received with notice/aviz before the invoice"""
         
         data = super()._prepare_account_move_line(move)  
-#I think that     408000    Furnizori - facturi nesosite  must be  Current Liabilities    ​            
+#     408000    Furnizori - facturi nesosite  must be  Current Liabilities    ​            
 #  it can not be selected in account-move_line  because is anything beside  receivable payable 
+# if not the amount is going to be wrong computed and = with taxex
 
 #     purchase_method =
 #         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
@@ -61,7 +62,7 @@ class PurchaseOrderLine(models.Model):
                     data["account_id"] = self.company_id.property_stock_picking_payable_account_id.id 
                 else:
                     data["account_id"] = self.product_id._get_product_accounts()["stock_valuation"]
-# default behavior so we are not going to put aymore
+# default behavior so we are not going to put anymore
 #             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
 #                 data["account_id"] = self.product_id.categ_id.property_account_expense_categ_id.id
         else:  # Control bills based on ordered quantities

@@ -9,6 +9,7 @@ from odoo.tools.float_utils import float_compare
 class SaleOrderLine(models.Model):
     """modify the account if this inovice is for a notice/aviz stock movement that hapend before
        is setting account 418 that must be used if the goods where sent before the invoice
+       account 418 must be != recivable        if not it can not be put into invoice and also the base is wrong at computing taxes
     """
 
     _inherit = "sale.order.line"
@@ -21,6 +22,6 @@ class SaleOrderLine(models.Model):
                 if picking.notice:
                     notice = True
             if notice:
-                res["account_id"] = self.company_id.property_stock_picking_receivable_account_id #or res["account_id"]
+                res["account_id"] = self.company_id.property_stock_picking_receivable_account_id 
 
         return res
