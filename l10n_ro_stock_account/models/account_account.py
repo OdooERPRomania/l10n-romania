@@ -1,27 +1,22 @@
-# looks that is not necessary anymore
+from odoo import _, api, fields, models
 
-
-# ©  2008-2018 Fekete Mihai <mihai.fekete@forbiom.eu>
-#              Dorin Hongu <dhongu(@)gmail(.)com
-# See README.rst file on addons root folder for license details
+class AccountAccount(models.Model):
+    _inherit = "account.account"
  
-#from odoo import _, api, fields, models
- 
-# 
-# # class AccountAccount(models.Model):
-# #     _inherit = "account.account"
-# # 
-# #     # TO REMOVE
-# #     @api.constrains("internal_type", "reconcile")
-# #     def _check_reconcile(self):
-# #         accounts = self.env["account.account"]
-# #         for account in self:
-# #             if (
-# #                 account != self.company_id.property_stock_picking_payable_account_id
-# #                 and account
-# #                 != self.company_id.property_stock_picking_receivable_account_id
-# #             ):
-# #                 accounts |= account
-# # 
-# #         super(AccountAccount, accounts)._check_reconcile()
+    def init(self, *a):
+        """init called at every install to change the user_type_id for account 408 418
+            this is required to be able to create a invoice with a line with this accounts
+            and a invoice with right base from sale and purchase 
+            
+            search with('company_id','=',self.env.company.id) is changing at env company
+            search without compnay_id is modify at all the companies from this database
+        """
+        account_408 = self.search([('code','=','408000'),('name','=','Furnizori - facturi nesosite')])#,('company_id','=',self.env.company.id)])
+        for account in account_408:
+            if account.user_type_id == self.env.ref("account.data_account_type_payable"):
+                account.user_type_id = self.env.ref("account.data_account_type_current_liabilities")
 
+        account_418 = self.search([('code','=','418000'),('name','=','Clienţi - facturi de întocmit')])#,('company_id','=',self.env.company.id)])
+        for account in account_418:
+            if account.user_type_id == self.env.ref("account.data_account_type_receivable"):
+                account.user_type_id = self.env.ref("account.data_account_type_current_assets")
