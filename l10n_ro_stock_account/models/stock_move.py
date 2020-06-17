@@ -142,7 +142,7 @@ production_store", "Reception in store from production"
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
     def _account_entry_move(self, qty, description, svl_id, cost):
-        """ Accounting Valuation Entries """
+        """ Accounting Valuation Entries called from stock_account.stock_move.action_done that is called form stock_picking.button_validate"""
         self.ensure_one()
         # convert from UTC (server timezone) to user timezone
 #         use_date = fields.Datetime.context_timestamp(
@@ -340,7 +340,7 @@ production_store", "Reception in store from production"
         Create account move with the uneligible vat one (442810) to suit move: 3xx = 442810
         """
         move = self
-        # journal_id, acc_src, acc_dest, acc_valuation = self._get_accounting_data_for_valuation()
+        journal_id, acc_src, acc_dest, acc_valuation = self._get_accounting_data_for_valuation()
         accounts_data = move.product_id.product_tmpl_id.get_product_accounts()
         acc_dest = accounts_data.get("stock_valuation", False)
 
