@@ -13,7 +13,7 @@ class StockInventory(models.Model):
     _inherit = "stock.inventory"
 
     acc_move_line_ids = fields.One2many(
-        "account.move.line", "stock_inventory_id", string="Generated accounting lines"
+        "account.move.line", "stock_inventory_id", string="Generated accounting lines", help = "A field just to be easier to see the generated accounting entries "
     )
 
     def post_inventory(self):
