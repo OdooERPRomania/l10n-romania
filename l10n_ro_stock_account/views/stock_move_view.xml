@@ -15,6 +15,7 @@
                 </field>
 				<group name="linked_group" position="before">
 					<group>
+						<field name="account_move_ids"/>
 						<field name="move_line_ids"/>
 					</group>
 				</group>

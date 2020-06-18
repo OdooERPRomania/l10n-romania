@@ -9,14 +9,19 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
+
+# all just adds a field in view;  
+# must verify if action_cancel_draft is deleting also the account.move or we need this
 class StockInventory(models.Model):
     _inherit = "stock.inventory"
+    
 
     acc_move_line_ids = fields.One2many(
         "account.move.line", "stock_inventory_id", string="Generated accounting lines", help = "A field just to be easier to see the generated accounting entries "
     )
 
     def post_inventory(self):
+        "just to have the acc_move_line_ids used in view. can be also without this fields"
         res = super().post_inventory()
         for inv in self:
             acc_move_line_ids = self.env["account.move.line"]
@@ -26,7 +31,7 @@ class StockInventory(models.Model):
             acc_move_line_ids.write({"stock_inventory_id": inv.id})
         return res
 
-    def action_cancel_draft(self):
+    def action_cancel_draft(self):        # without this is not going to delete he account_move_ids ??
         for inv in self:
             for move in inv.move_ids:
                 if move.account_move_ids:
@@ -34,9 +39,10 @@ class StockInventory(models.Model):
                     move.account_move_ids.unlink()
         return super().action_cancel_draft()
 
-    def unlink(self):
-        if any(inv.state not in ("draft", "cancel") for inv in self):
-            raise UserError(_("You can only delete draft inventory."))
-        return super().unlink()
+# exists in stock app
+#     def unlink(self):
+#         if any(inv.state not in ("draft", "cancel") for inv in self):
+#             raise UserError(_("You can only delete draft inventory."))
+#         return super().unlink()
 
 

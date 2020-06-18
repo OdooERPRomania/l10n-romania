@@ -63,12 +63,16 @@ production_store", "Reception in store from production"
 """,
         default="")
 
-    def _action_cancel(self):
-        for move in self:
-            if move.account_move_ids:
-                move.account_move_ids.button_cancel()
-                move.account_move_ids.unlink()
-        return super()._action_cancel()
+#     def _action_cancel(self):  
+#         """ # IS THIS NECESARY? WITHOUT IT IS NOT FUNCTIONING?  
+#      I think that you do not have invoice notes before the move is done. 
+#      if is done you can not cancel it 
+#         """
+#         for move in self:
+#             if move.account_move_ids:
+#                 move.account_move_ids.button_cancel()
+#                 move.account_move_ids.unlink()
+#         return super()._action_cancel()
 
 
     def _get_accounting_data_for_valuation(self):
