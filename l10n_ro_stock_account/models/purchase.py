@@ -40,12 +40,9 @@ class PurchaseOrderLine(models.Model):
 
     def _prepare_account_move_line(self, move=False):
         """modify the account if this inovice is for a notice/aviz stock movement that hapend before
-            is setting account 408 that must be used if the goods where received with notice/aviz before the invoice"""
+            is setting account 408 ' Furnizori - facturi nesosite' that must be used if the goods where received with notice/aviz before the invoice"""
         
         data = super()._prepare_account_move_line(move)  
-#     408000    Furnizori - facturi nesosite  must be  Current Liabilities    ​            
-#  it can not be selected in account-move_line  because is anything beside  receivable payable 
-# if not the amount is going to be wrong computed and = with taxex
 
 #     purchase_method =
 #         ('purchase', 'On ordered quantities:Control bills based on ordered quantities
@@ -54,19 +51,13 @@ class PurchaseOrderLine(models.Model):
         if  self.product_id.purchase_method == "receive":  
             # receptia in baza cantitatilor primite
             if self.product_id.type == "product":
-                notice = False
-                for picking in self.order_id.picking_ids:
-                    if picking.notice:
-                        notice = True
-                if notice:  # daca e stocabil si exista un document facut  ???????????
+                if any( [picking.notice for picking in self.order_id.picking_ids]) :
+                    # if exist at least one notice/aviz we are going to make at reception accounting lines with 408
+                    # even if the invoice came the same day as reception; we are going to have a debit and a credit in account 408 so is the same as making only accounting lines on invoice
                     data["account_id"] = self.company_id.property_stock_picking_payable_account_id.id 
                 else:
                     data["account_id"] = self.product_id._get_product_accounts()["stock_valuation"]
-# default behavior so we are not going to put anymore
-#             else:  # daca nu este stocabil trebuie sa fie un cont de cheltuiala
-#                 data["account_id"] = self.product_id.categ_id.property_account_expense_categ_id.id
         else:  # Control bills based on ordered quantities
             if self.product_id.type == "product":
                 data["account_id"] = self.product_id._get_product_accounts()["stock_valuation"]
-
         return data

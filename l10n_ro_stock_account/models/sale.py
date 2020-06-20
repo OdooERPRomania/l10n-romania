@@ -17,11 +17,7 @@ class SaleOrderLine(models.Model):
     def _prepare_invoice_line(self,sequence):
         res = super()._prepare_invoice_line(sequence=sequence)
         if self.product_id.invoice_policy == "delivery":
-            notice = False
-            for picking in self.order_id.picking_ids:
-                if picking.notice:
-                    notice = True
-            if notice:
+            if any([picking.notice  for picking in self.order_id.picking_ids]):
                 res["account_id"] = self.company_id.property_stock_picking_receivable_account_id 
 
         return res

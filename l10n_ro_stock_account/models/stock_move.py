@@ -12,6 +12,42 @@ _logger = logging.getLogger(__name__)
 
 #svl= StockValuationLine
 
+# is good to use from stock_account    ( functions of product
+#     def _stock_account_get_anglo_saxon_price_unit(self, uom=False):
+#         price = self.standard_price
+#         if not self or not uom or self.uom_id.id == uom.id:
+#             return price or 0.0
+#         return self.uom_id._compute_price(price, uom)
+
+#     def _compute_average_price(self, qty_invoiced, qty_to_invoice, stock_moves):
+#         """Go over the valuation layers of `stock_moves` to value `qty_to_invoice` while taking
+#         care of ignoring `qty_invoiced`. If `qty_to_invoice` is greater than what's possible to
+#         value with the valuation layers, use the product's standard price.
+# 
+#         :param qty_invoiced: quantity already invoiced
+#         :param qty_to_invoice: quantity to invoice
+#         :param stock_moves: recordset of `stock.move`
+#         :returns: the anglo saxon price unit
+#         :rtype: float
+#         """
+#         self.ensure_one()
+#         if not qty_to_invoice:
+#             return 0.0
+# 
+#         if not qty_to_invoice:
+# ......
+#             if float_is_zero(qty_to_take_on_candidates, precision_rounding=candidate.uom_id.rounding):
+#                 break
+# 
+#         # If there's still quantity to invoice but we're out of candidates, we chose the standard
+#         # price to estimate the anglo saxon price unit.
+#         if not float_is_zero(qty_to_take_on_candidates, precision_rounding=self.uom_id.rounding):
+#             negative_stock_value = self.standard_price * qty_to_take_on_candidates
+#             tmp_value += negative_stock_value
+# 
+#         return tmp_value / qty_to_invoice
+
+
 class StockMove(models.Model):
     _name = "stock.move"
     _inherit = "stock.move"
@@ -146,7 +182,9 @@ production_store", "Reception in store from production"
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
     def _account_entry_move(self, qty, description, svl_id, cost):
-        """ Accounting Valuation Entries called from stock_account.stock_move.action_done that is called form stock_picking.button_validate"""
+        """ 
+        is only called if the product has real_time valuation. if it has manual(periodic) valuation is not going to make accouting entries
+        Accounting Valuation Entries called from stock_account.stock_move.action_done that is called form stock_picking.button_validate"""
         self.ensure_one()
         # convert from UTC (server timezone) to user timezone
 #         use_date = fields.Datetime.context_timestamp(

@@ -74,7 +74,7 @@ class ProductTemplate(models.Model):
         return accounts
 
 
-
+# must look at it
     def write(self, vals):
         if "list_price" in vals:
             self.do_change_list_price(vals["list_price"])
@@ -84,7 +84,7 @@ class ProductTemplate(models.Model):
 
 
 
-
+# must look at it
     def do_change_list_price(self, new_price):
         """ Changes the Standard Price of Product and creates an account move accordingly."""
         AccountMove = self.env["account.move"]
@@ -207,22 +207,22 @@ class ProductTemplate(models.Model):
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
-    # TO CHECK - METODA NU MAI EXISTA
-    @api.model
-    def _convert_prepared_anglosaxon_line(self, line, partner):
-        res = super()._convert_prepared_anglosaxon_line(
-            line, partner
-        )
-        res["stock_location_id"] = line.get("stock_location_id", False)
-        res["stock_location_dest_id"] = line.get("stock_location_dest_id", False)
-        return res
+#     # TO CHECK - METODA NU MAI EXISTA
+#     @api.model
+#     def _convert_prepared_anglosaxon_line(self, line, partner):
+#         res = super()._convert_prepared_anglosaxon_line(
+#             line, partner
+#         )
+#         res["stock_location_id"] = line.get("stock_location_id", False)
+#         res["stock_location_dest_id"] = line.get("stock_location_dest_id", False)
+#         return res
 
-    # TO CHECK - METODA NU MAI EXISTA
-    def _compute_stock_value(self):
-        location = self.env.context.get("location")
-        return super()._compute_stock_value()
+#     # TO CHECK - METODA NU MAI EXISTA
+#     def _compute_stock_value(self):
+#         location = self.env.context.get("location")
+#         return super()._compute_stock_value()
 
-# 202006 exists in account.move
+# 202006 exists in account.move  and i cnan use them
 #     def _stock_account_anglo_saxon_reconcile_valuation(self, product=False):
 #         """ Reconciles the entries made in the interim accounts in anglosaxon accounting,
 #         reconciling stock valuation move lines with the invoice's.
