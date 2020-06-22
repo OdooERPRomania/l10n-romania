@@ -42,18 +42,26 @@ class AccountMove(models.Model):
         lines_vals_list = []
 
         for move in self:
-#orig            if move.move_type not in ('in_invoice', 'in_refund', 'in_receipt') or not move.company_id.anglo_saxon_accounting:
-            if move.move_type not in ('in_invoice', 'in_refund', 'in_receipt') or\
-               not move.company_id.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]\
-               or move.company_id.anglo_saxon_accounting :  # if this is the case, use the original purchase_stock function \  
+            if not move.company_id.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+                super()._stock_account_prepare_anglo_saxon_in_lines_vals()
+            if move.move_type not in ('in_invoice', 'in_refund', 'in_receipt'):
                 continue
-
             move = move.with_company(move.company_id)
             for line in move.invoice_line_ids.filtered(lambda line: line.product_id.type == 'product' and line.product_id.valuation == 'real_time'):
 
-                # Filter out lines being not eligible for price difference.
-                if line.product_id.type != 'product' or line.product_id.valuation != 'real_time':
+                if not line.purchase_line_id: # is not a invoice from a purchase 
                     continue
+                # Retrieve stock valuation moves.
+                valuation_stock_moves = self.env['stock.move'].search([
+                    ('purchase_line_id', '=', line.purchase_line_id.id),
+                    ('state', '=', 'done'),
+                    ('product_qty', '!=', 0.0),
+                ])
+                if not valuation_stock_moves:
+                    continue
+                acc_move_ids = self.env['account.move'].search([('stock_move_id','in',valuation_stock_moves.ids)])
+                if not acc_move_ids:
+                    continue # if are not accounting entries we are not going to put price differences
 
                 # Retrieve accounts needed to generate the price difference.
                 # default must be 348000 Diferenţe de preţ la produse
@@ -68,12 +76,7 @@ class AccountMove(models.Model):
                     po_currency = line.purchase_line_id.currency_id
                     po_company = line.purchase_line_id.company_id
 
-                    # Retrieve stock valuation moves.
-                    valuation_stock_moves = self.env['stock.move'].search([
-                        ('purchase_line_id', '=', line.purchase_line_id.id),
-                        ('state', '=', 'done'),
-                        ('product_qty', '!=', 0.0),
-                    ])
+
                     if move.move_type == 'in_refund':
                         valuation_stock_moves = valuation_stock_moves.filtered(lambda stock_move: stock_move._is_out())
                     else:

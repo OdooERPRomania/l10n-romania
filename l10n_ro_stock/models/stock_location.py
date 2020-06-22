@@ -34,4 +34,5 @@ class StockLocation(models.Model):
         [("store", _("Store")), ("warehouse", _("Warehouse"))],
         string="Merchandise type",
         default="warehouse",
+        help="Store represent a location where we keep the inventory at list price https://www.contzilla.ro/monografii-contabile-pentru-activitatea-unui-magazin-comert-cu-amanuntul/"
     )
