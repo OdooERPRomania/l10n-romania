@@ -292,7 +292,7 @@ production_store
                  
         elif location_from.usage == "transit":
             if location_to.usage == "internal":
-                if self.picking_id.partner_id.commercial_partner_id != self.company_id.partner_id:
+                if self.picking_id.partner_id.commercial_partner_id and (self.picking_id.partner_id.commercial_partner_id != self.company_id.partner_id):
                     stock_move_type += "_reception"
                     if notice:
                         self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
@@ -432,9 +432,9 @@ production_store
     def _create_transit_in(self, qty ,description, svl_id, cost, refund=False):
         """    30x = 482  decont intre subunitati"""
         accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
-        acc_dest =  accounts_data['stock_valuation'].id
-        acc_src = self.company_id.property_stock_transfer_account_id.id 
-        if not acc_src:
+        acc_src =  accounts_data['stock_valuation'].id
+        acc_dest = self.company_id.property_stock_transfer_account_id.id 
+        if not acc_dest:
             raise UserError(f"Something is wrong at creating transit_out stock_move account entries.\nYou have not selected in company romanian setting property_stock_transfer_id.\nUse 482 decont intre subunitati. ")
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
