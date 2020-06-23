@@ -91,7 +91,7 @@ inventory_plus_store", "Inventory plus in store"
 inventory_minus",   # cont de cheltuiala la cont de stoc # 758800 Alte venituri din exploatare
 inventory_minus_store", "Inventory minus in store"
             
-production", "Reception from production"
+production", "Reception from production" 345" Produse finite" =711 "Venituri aferente costurilor stocurilor de produse"
             
 transfer", "Transfer"
 transfer_store", "Transfer in Store"
@@ -263,14 +263,14 @@ production_store", "Reception in store from production"
                         acc_dest = self.location_dest_id.property_account_expense_location_id
                         acc_src = acc_dest
                 else:
-                    # cont stoc la cont de cheltuiala # 758800 Alte venituri din exploatare
                     self._create_inventory_plus( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                     
                 
         elif location_from.usage == "production":
             if  location_to.usage == "internal":
                  stock_move_type += "_production"
-          
+                 self._create_production( qty=qty ,description=description, svl_id=svl_id, cost=cost)
+                 
         elif location_from.usage == "transit":
             if location_to.usage == "internal":
                 if self.picking_id.partner_id.commercial_partner_id != self.company_id.partner_id:
@@ -304,6 +304,16 @@ production_store", "Reception in store from production"
                 'move_type': 'entry',
             })
             new_account_move.post()
+
+    def _create_production(self, qty ,description, svl_id, cost, refund=False):
+        """345 Produse finite" =711 Venituri aferente costurilor stocurilor de produse """
+        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
+        acc_src = accounts_data['income'].id
+        acc_dest = accounts_data['stock_valuation'].id
+        self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
+        journal_id = accounts_data['stock_journal'].id
+        # is creating a account_move type entry and  corresponding account_move_lines function in 
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
 
 
     def _create_consume(self, qty ,description, svl_id, cost, refund=False):
@@ -398,8 +408,10 @@ production_store", "Reception in store from production"
     
     
     
-    
-    
+    ##################################Old functions to delete
+    ##################################Old functions to delete
+     ##################################Old functions to delete
+      ##################################Old functions to delete 
     
     
     
