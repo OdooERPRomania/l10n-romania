@@ -6,12 +6,12 @@ import logging
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from forks_addons.odoo.doc._extensions.pyjsparser.parser import false
+from forks_addons.odoo.doc._extensions.pyjsparser.parser import false, true
 
 _logger = logging.getLogger(__name__)
 
-#svl= StockValuationLine
-# in create_account functions we are changing the acc_src with acc_dest because the value can be - and that is changing debit with credit
+#!!! svl= StockValuationLine
+#!!! in create_account functions we are changing the acc_src with acc_dest because the value can be - and that is changing debit with credit
 
 
 # is good to use from stock_account    ( functions of product
@@ -82,11 +82,11 @@ delivery_refund_store", "Delivery refund in store"  face nota inversa ponderata 
 delivery_store_notice", "Delivery from store with notice"
 delivery_refund_store_notice", "Delivery refund in store with notice" face nota inversa ponderata la cantitate
 
-consume", "Consume"
+consume", darea in folosinta # cheltuiala = stock_valuation & 8035=8035
             
 inventory_plus", # cont stoc la cont de cheltuiala  # 758800 Alte venituri din exploatare ;  
                 60X Cheltuieli privind stocurile    =    30X, 37X Conturi de stocuri    -Valoarea plusului
-                30X, 37X Conturi de stocuri    =    758 Alte venituri din exploatare    Valoarea plusului venitul este impozabil
+    *varianta aleasa         30X, 37X Conturi de stocuri    =    758 Alte venituri din exploatare    Valoarea plusului venitul este impozabil
 inventory_plus_store", "Inventory plus in store"
 inventory_minus",   # cont de cheltuiala la cont de stoc # 758800 Alte venituri din exploatare
 inventory_minus_store", "Inventory minus in store"
@@ -114,28 +114,31 @@ production_store", "Reception in store from production"
 #                 move.account_move_ids.unlink()
 #         return super()._action_cancel()
 
-
+#     def _is_out(self):
+#         """override to make accounting moves also for internal-production = consume"""
+#         self.ensure_one()
+#         if  self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1] and \
+#             not self.origin_returned_move_id and self.location_id.usage == "internal" and self.location_dest_id.usage == "production":
+#             return True
+#         return super()._is_out()
 
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
     def _account_entry_move(self, qty, description, svl_id, cost):
         """ 
-        is only called if the product has real_time valuation. if it has manual(periodic) valuation is not going to make accounting entries
-        Accounting Valuation Entries called from stock_account.stock_move.action_done that is called form stock_picking.button_validate
+        is only called if the product has real_time valuation. 
+        if it has manual(periodic) valuation is not going to make accounting entries
+        Accounting Valuation Entries called from stock_account.stock_move.py.action_done that is called form stock_picking.button_validate
         If is Romanian accounting will use this function otherwise the original from stock_account
         """
         self.ensure_one()
         if not self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1]:
+            # is not Romanian accounting
             return super()._account_entry_move(self, qty, description, svl_id, cost)
-# from here down is only for Romania accounting   from here down is only for Romania accounting
-        
         
         # convert from UTC (server timezone) to user timezone
-#         use_date = fields.Datetime.context_timestamp(
-#             self, timestamp=fields.Datetime.from_string(self.date)
-#         )
+#         use_date = fields.Datetime.context_timestamp(self, timestamp=fields.Datetime.from_string(self.date))
 #         use_date = fields.Date.to_string(use_date)
-# 
 #         move = self.with_context(force_period_date=use_date, stock_move_type=stock_move_type)
         self = self.with_context(force_period_date=self.date)
         
@@ -224,13 +227,8 @@ production_store", "Reception in store from production"
                 
             elif location_to.usage == "production":
                 stock_move_type += "_consume"
-                """Darea in folosinta:
-                
-                603    Ch. privind materialele de natura ob. de inventar    =    303    Materiale de natura ob.de inventar    1,700
-                c) Concomitent, sumele se pot inregistra extracontabil in contul 8035 Stocuri de natura obiectelor de inventar date în folosinta.
-                
-                8035 Stocuri de natura obiectelor de inventar date în folosinta 1,700 """
-                
+                self._create_consume(qty=qty ,description=description, svl_id=svl_id, cost=cost)
+                 
             elif location_to.usage == "inventory":
                 stock_move_type += "inventory_minus"
                 self._create_inventory_minus( qty=qty ,description=description, svl_id=svl_id, cost=cost)
@@ -286,6 +284,47 @@ production_store", "Reception in store from production"
         self.stock_move_type = stock_move_type
         return
 
+    def _create_account_move_lineS(self, parameters):#  0credit_account_id, 1debit_account_id, 2journal_id, 3qty, 4description, 5svl_id, 6cost
+        "original from stock_account.stock_move.py._create_account_move_line; but this is can create more move_lines"
+        self.ensure_one()
+        AccountMove = self.env['account.move'].with_context(default_journal_id=parameters[0][2])
+        
+        move_lines = []
+        for param in parameters:
+            move_lines += self._prepare_account_move_line(qty=param[3], cost=param[6], credit_account_id=param[0], debit_account_id=param[1], description=param[4])
+        if move_lines:
+            date = self._context.get('force_period_date', fields.Date.context_today(self))
+            new_account_move = AccountMove.sudo().create({
+                'journal_id': parameters[0][2],
+                'line_ids': move_lines,
+                'date': date,
+                'ref': ''.join([p[4] for p in parameters]),
+                'stock_move_id': self.id,
+                'stock_valuation_layer_ids': [(6, None, [p[5] for p in parameters])],
+                'move_type': 'entry',
+            })
+            new_account_move.post()
+
+
+    def _create_consume(self, qty ,description, svl_id, cost, refund=False):
+        """Darea in folosinta:
+        603    Ch. privind materialele de natura ob. de inventar    =    303    Materiale de natura ob.de inventar    1,700
+        c) Concomitent, sumele se pot inregistra extracontabil in contul 8035 Stocuri de natura obiectelor de inventar date în folosinta.
+        8035 Stocuri de natura obiectelor de inventar date în folosinta 1,700 """
+        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
+        acc_src = accounts_data['expense'].id
+        acc_dest = accounts_data['stock_valuation'].id
+        self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
+        journal_id = accounts_data['stock_journal'].id
+        # is creating a account_move type entry and  corresponding account_move_lines function in 
+        acc_src1 = acc_dest2 = self.company_id.property_stock_usage_giving_account_id.id
+        if not acc_src1:
+            raise UserError(f"Something is wrong at creating consume(darea in folosinta) stock_move account entries.\nYou have not selected a property_stock_picking_payable_account_id in settings on compnay.\n select 8035. ")
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost),
+        #  (acc_src1, acc_dest2, journal_id,qty, description, svl_id, cost)  # error If you want to use "Off-Balance Sheet" accounts. so we are going to do 2 account_moves
+                                         ])
+        self._create_account_move_lineS([(acc_src1, acc_dest2, journal_id,qty, description, svl_id, cost)])
+
 
     def _create_inventory_plus(self, qty ,description, svl_id, cost, refund=False):
         """     60X Cheltuieli privind stocurile    =    30X, 37X Conturi de stocuri    -Valoarea plusului
@@ -300,7 +339,7 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines function in 
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
                     
     def _create_inventory_minus(self, qty ,description, svl_id, cost, refund=False):
         """-    Inregistrare minus de inventar:
@@ -330,7 +369,7 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines function in 
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
 
     
     def _create_account_delivery_14(self, qty ,description, svl_id, cost, refund=False):
@@ -341,7 +380,7 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines function in 
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
 
     def _create_account_reception_14(self, qty ,description, svl_id, cost,refund=False):
         "Primirea marfurilor pe baza de aviz de insotire: ex 371 = 408    "
@@ -352,7 +391,17 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
 
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     def _create_account_transit_out(self, qty ,description, svl_id, cost):
         "trasit_out   "
@@ -363,7 +412,7 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
     
     def _create_account_transit_in(self, qty ,description, svl_id, cost):
         "trasit_in     "
@@ -374,7 +423,7 @@ production_store", "Reception in store from production"
         self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
     
     def _create_account_transfer(self, qty ,description, svl_id, cost):
         """transfer   permit_same_account=True     
@@ -395,7 +444,7 @@ production_store", "Reception in store from production"
         acc_dst = accounts_data['stock_valuation']
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
     
     
     def _create_account_reception_in_store_14(self, qty ,description, svl_id, cost, refund=False):
