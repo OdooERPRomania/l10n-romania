@@ -19,15 +19,16 @@ class stock_location(models.Model):
         string="Price Difference Account",
         help="This account will be used to value price difference between purchase price and cost price.",
     )
-    property_account_income_location_id = fields.Many2one(
-        "account.account",
-        string="Income Account",
-        help="This account will be used to value outgoing stock using sale price.",
-    )
-    property_account_expense_location_id = fields.Many2one(
-        "account.account",
-        string="Expense Account",
-        help="This account will be used to value outgoing stock using cost price.",
-    )
+# exista deja campuri in locatie, iar locatia are companie deci nu mai conteaza
+#     property_account_income_location_id = fields.Many2one(
+#         "account.account",
+#         string="Income Account",
+#         help="This account will be used to value outgoing stock using sale price.",
+#     )
+#     property_account_expense_location_id = fields.Many2one(
+#         "account.account",
+#         string="Expense Account",
+#         help="This account will be used to value outgoing stock using cost price.",
+#     )
 
 

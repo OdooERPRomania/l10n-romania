@@ -60,7 +60,7 @@ class StockMove(models.Model):
 reception   - Nici o nota contabila pe receptie pt ca e in factura 371+4426 = 401
 reception_refund  - rambursare receptie nu face note contabile 
 
-reception_notice", "Reception with notice"  # receptie pe baza de aviz
+reception_notice",   # receptie Primirea marfurilor pe baza de aviz de insotire: ex 371 = 408
 reception_refund_notice", "Reception refund with notice",  # rabursare receptie facuta cu aviz. face nota inversa ponderata la cantitate
             
 reception_store", "Reception in store"  # receptie in magazin
@@ -68,38 +68,39 @@ reception_refund_store", "Reception regund in store"  # rambursare receptie in m
 
             
 reception_store_notice", "Reception in store with notice"
-reception_refund_store_notice", "Reception refund in store with notice",  # rabursare receptie in magazin facuta cu aviz. face nota inversa ponderata la cantitate
+reception_refund_store_notice   # rabursare receptie in magazin facuta cu aviz. face nota inversa ponderata la cantitate
 
 delivery  - nu face note contabile pentru ca se fac pe factura
 delivery_refund", "Delivery refund"
 
-delivery_notice,     # Create account moves for deliveries with notice (e.g. 418 = 707)
-delivery_refund_notice", "Delivery refund with notice"  face nota inversa ponderata la cantitate
+delivery_notice     # Create account moves for deliveries with notice (e.g. 418 = 707)
+delivery_refund_notice   face nota inversa ponderata la cantitate
 
-delivery_store", "Delivery from store"
-delivery_refund_store", "Delivery refund in store"  face nota inversa ponderata la cantitate
+delivery_store 
+delivery_refund_store  face nota inversa ponderata la cantitate
 
-delivery_store_notice", "Delivery from store with notice"
-delivery_refund_store_notice", "Delivery refund in store with notice" face nota inversa ponderata la cantitate
+delivery_store_notice 
+delivery_refund_store_notice   face nota inversa ponderata la cantitate
 
-consume", darea in folosinta # cheltuiala = stock_valuation & 8035=8035
+consume  darea in folosinta # cheltuiala = stock_valuation & 8035=8035
             
-inventory_plus", # cont stoc la cont de cheltuiala  # 758800 Alte venituri din exploatare ;  
+inventory_plua # cont stoc la cont de cheltuiala  # 758800 Alte venituri din exploatare ;  
                 60X Cheltuieli privind stocurile    =    30X, 37X Conturi de stocuri    -Valoarea plusului
     *varianta aleasa         30X, 37X Conturi de stocuri    =    758 Alte venituri din exploatare    Valoarea plusului venitul este impozabil
-inventory_plus_store", "Inventory plus in store"
-inventory_minus",   # cont de cheltuiala la cont de stoc # 758800 Alte venituri din exploatare
-inventory_minus_store", "Inventory minus in store"
+
+inventory_plus_store, 
+inventory_minus   # cont de cheltuiala la cont de stoc # 758800 Alte venituri din exploatare
+inventory_minus_store, 
             
-production", "Reception from production" 345" Produse finite" =711 "Venituri aferente costurilor stocurilor de produse"
+production  "Reception from production" 345" Produse finite" =711 "Venituri aferente costurilor stocurilor de produse"
             
-transfer", "Transfer"
-transfer_store", "Transfer in Store"
-transfer_in", "Transfer in"
-transfer_out", "Transfer out"
+transfer  371.gest1= 371.gest2 5 lei doar daca conturile sunt diferite
+transfer_store
+transfer_in
+transfer_out
             
-consume_store", "Consume from Store"
-production_store", "Reception in store from production"
+consume_store 
+production_store
 """,
         default="")
 
@@ -114,13 +115,67 @@ production_store", "Reception in store from production"
 #                 move.account_move_ids.unlink()
 #         return super()._action_cancel()
 
+    def _get_out_move_lines(self):
+        """ original from stock_account/sock_move.py  Returns the `stock.move.line` records of `self` considered as outgoing. It is done thanks
+        to the `_should_be_valued` method of their source and destionation location as well as their
+        owner.
+
+        :returns: a subset of `self` containing the outgoing records
+        :rtype: recordset
+        """
+        res = self.env['stock.move.line']
+        if  self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1] :
+            for move_line in self.move_line_ids:
+                if move_line.owner_id and move_line.owner_id != move_line.company_id.partner_id:
+                    continue
+                if move_line.location_id._should_be_valued() or move_line.location_dest_id._should_be_valued():
+                    res |= move_line
+        else:
+            res = super()._get_out_move_lines()
+        return res
+
 #     def _is_out(self):
-#         """override to make accounting moves also for internal-production = consume"""
+#         """override to make accounting moves also for internal-internal = transfer"""
 #         self.ensure_one()
 #         if  self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1] and \
-#             not self.origin_returned_move_id and self.location_id.usage == "internal" and self.location_dest_id.usage == "production":
+#             not self.origin_returned_move_id and self.location_id.usage == "internal" and self.location_dest_id.usage == "internal":
 #             return True
-#         return super()._is_out()
+#         res = super()._is_out()
+#         return res
+
+    def _create_in_svl(self, forced_quantity=None):
+        """Create a `stock.valuation.layer` from `self`.
+
+        :param forced_quantity: under some circunstances, the quantity to value is different than
+            the initial demand of the move (Default value = None)
+        """
+        svl_vals_list = []
+        for move in self:
+            move = move.with_company(move.company_id)
+            valued_move_lines = move._get_in_move_lines()
+            valued_quantity = 0
+            for valued_move_line in valued_move_lines:
+                valued_quantity += valued_move_line.product_uom_id._compute_quantity(valued_move_line.qty_done, move.product_id.uom_id)
+            unit_cost = abs(move._get_price_unit())  # May be negative (i.e. decrease an out move).
+            if move.product_id.cost_method == 'standard':
+                unit_cost = move.product_id.standard_price
+            svl_vals = move.product_id._prepare_in_svl_vals(forced_quantity or valued_quantity, unit_cost)
+            svl_vals.update(move._prepare_common_svl_vals())
+            if forced_quantity:
+                svl_vals['description'] = 'Correction of %s (modification of past move)' % move.picking_id.name or move.name
+            svl_vals_list.append(svl_vals)
+        return self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
+
+ 
+
+#     def _is_in(self):
+#         """override to make accounting moves also for internal-internal = transfer"""
+#         self.ensure_one()
+#         if  self.env.company.chart_template_id.id == self.env['ir.model.data'].get_object_reference('l10n_ro','ro_chart_template')[1] and \
+#             not self.origin_returned_move_id and self.location_id.usage == "internal" and self.location_dest_id.usage == "internal":
+#             return True
+#         res = super()._is_in()
+#         return res
 
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
 ##################### generare note contabile suplimentare pentru micarea de stoc################################################################
@@ -193,8 +248,6 @@ production_store", "Reception in store from production"
                 stock_move_type +=  "_reception"
                 if notice:
                     self.stock_move_type = stock_move_type
-#                     on all created stock_moves we must make this and put this stock_move 
-#                     _reverse_moves
                     self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 elif store:
                     self.stock_move_type = stock_move_type
@@ -216,7 +269,6 @@ production_store", "Reception in store from production"
                     self._create_account_delivery_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 elif "store" in stock_move_type:
                     _logger.info(f"Nota contabila livrare din magazin stock_move_type={stock_move_type}")
-                    #?????
                     self._create_account_delivery_from_store(refund="refund" in stock_move_type, qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 else:
                     self.stock_move_type = stock_move_type
@@ -236,8 +288,10 @@ production_store", "Reception in store from production"
             
             elif location_to.usage == "internal":
                 stock_move_type += "_transfer"
-                self._create_account_transfer(qty=qty ,description=description, svl_id=svl_id, cost=cost)
-                _logger.info(f"Nota contabila tranfser")
+                if store:
+                    pass
+                else:
+                    self._create_transfer(qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 
             elif location_to.usage == "transit":
                 #Transit Location: Counterpart location that should be used in inter-company or inter-warehouses operations
@@ -284,6 +338,7 @@ production_store", "Reception in store from production"
         self.stock_move_type = stock_move_type
         return
 
+##### functions called based on stock_move_type  ##### functions called based on stock_move_type   ##### functions called based on stock_move_type  
     def _create_account_move_lineS(self, parameters):#  0credit_account_id, 1debit_account_id, 2journal_id, 3qty, 4description, 5svl_id, 6cost
         "original from stock_account.stock_move.py._create_account_move_line; but this is can create more move_lines"
         self.ensure_one()
@@ -403,8 +458,17 @@ production_store", "Reception in store from production"
 
         self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
     
-    
-    
+    def _create_transfer(self, qty ,description, svl_id, cost):
+        """transfer 371.gestiunea1= 371.gestiunea2 5 lei"""
+        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
+        acc_dest =  self.location_id.valuation_out_account_id.id or accounts_data['stock_valuation'].id  
+        acc_src = self.location_dest_id.valuation_in_account_id.id or accounts_data['stock_valuation'].id
+        if acc_src != acc_dest:     
+            journal_id = accounts_data['stock_journal'].id
+            self._create_account_move_lineS([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
+        else:
+            pass
+            # we are not going to create accounting entries at this transfer because the accounts are the same
     
     
     
@@ -436,6 +500,8 @@ production_store", "Reception in store from production"
         journal_id = accounts_data['stock_journal'].id
         # is creating a account_move type entry and  corresponding account_move_lines
         self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
+
+
     
     def _create_account_transfer(self, qty ,description, svl_id, cost):
         """transfer   permit_same_account=True     
