@@ -67,7 +67,7 @@ reception_store", "Reception in store"  # receptie in magazin
 reception_refund_store", "Reception regund in store"  # rambursare receptie in magazin. face nota inversa ponderata la cantitate
 
             
-reception_store_notice", "Reception in store with notice"
+reception_store_notice", 
 reception_refund_store_notice   # rabursare receptie in magazin facuta cu aviz. face nota inversa ponderata la cantitate
 
 delivery  - nu face note contabile pentru ca se fac pe factura
@@ -117,9 +117,10 @@ production_store
 #         return super()._action_cancel()
 
     def _get_out_move_lines(self):
-        """ original from stock_account/sock_move.py  Returns the `stock.move.line` records of `self` considered as outgoing. It is done thanks
-        to the `_should_be_valued` method of their source and destionation location as well as their
-        owner.
+        """ original from stock_account/sock_move.py  Returns the `stock.move.line` records of `self` considered as outgoing. 
+It is done thanks   to the `_should_be_valued` method of their source and destionation location as well as their owner.
+# def _should_be_valued(self):   if self.usage == 'internal' or (self.usage == 'transit' and self.company_id): return True
+we overide this because otherwise will not make accounting entries for internal - transit
 
         :returns: a subset of `self` containing the outgoing records
         :rtype: recordset
@@ -129,7 +130,8 @@ production_store
             for move_line in self.move_line_ids:
                 if move_line.owner_id and move_line.owner_id != move_line.company_id.partner_id:
                     continue
-                if move_line.location_id._should_be_valued() or move_line.location_dest_id._should_be_valued():
+                if (move_line.location_id._should_be_valued() and not move_line.location_dest_id._should_be_valued()) or \
+                    (move_line.location_id.usage == "internal" and move_line.location_dest_id.usage == "transit"):
                     res |= move_line
         else:
             res = super()._get_out_move_lines()
@@ -210,9 +212,7 @@ production_store
                     self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 elif store:
                     self.stock_move_type = stock_move_type
-                    self._create_account_reception_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
-                    self._create_account_delivery_from_store(refund="refund" in stock_move_type, qty=qty ,description=description, svl_id=svl_id, cost=cost)
-
+                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost)
                 else:
                     _logger.info(f"Nici o nota contabila pe receptie pt ca e in factura 371+4426 = 401")
                     self.stock_move_type = stock_move_type
@@ -483,7 +483,8 @@ Pentru a se obtine pretul de vanzare cu amanuntul se utilizeaza urmatoarea formu
 
 Capture
 
-***) Tva –ul se reflecta in pretul de vanzare cu amanuntul insa devine exigibil numai cand se realizeaza vanzarea marfurilor. Pana la acel moment se reflecta in contul 4428 Tva neexigibil, dupa care se reflecta in contul 4427 Tva colectata.
+***) Tva –ul se reflecta in pretul de vanzare cu amanuntul insa devine exigibil numai cand se realizeaza vanzarea marfurilor. 
+Pana la acel moment se reflecta in contul 4428 Tva neexigibil, dupa care se reflecta in contul 4427 Tva colectata.
 
 Prin urmare, pretul de vanzare cu amanuntul = 100.000 lei + 30.000 lei + 24.700 lei = 154.700 lei
 
@@ -496,50 +497,48 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
                                              4428 Tva neexigibila                                24.700
         '''   
         accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
-        acc_dest = self.location_dest_id.valuation_in_account_id.id or accounts_data["stock_valuation"]
+        acc_dest = accounts_data['stock_valuation'].id  
+        acc_src = self.company_id.property_stock_picking_payable_account_id.id
+        self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
         journal_id = accounts_data['stock_journal'].id
- 
-        if self.location_dest_id.valuation_in_account_id:
-            acc_dest = self.location_dest_id.valuation_in_account_id.id
-        else:
-            if self.location_id.valuation_out_account_id:
-                acc_dest = self.location_id.valuation_out_account_id.id
-            else:
-                acc_dest = accounts_data['stock_input'] 
- 
-        acc_src = move.location_dest_id.property_account_creditor_price_difference_location_id or self.product_id.property_account_creditor_price_difference or  self.product_id.categ_id.property_account_creditor_price_difference_categ
-        if not acc_src:
+        account_move_lineS = [(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)]
+# price difference account
+        acc_dest_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id or \
+                                self.product_id.property_account_creditor_price_difference or \
+                                self.product_id.categ_id.property_account_creditor_price_difference_categ
+
+        if not acc_dest_price_diff:
             raise UserError(_(
-                'Configuration error. Please configure the price difference account on the product or its category to process this operation.'))
+                'Configuration error. Please configure the price difference account on the location or product or its category to process this operation.'))
         
-        taxes_ids = move.product_id.taxes_id.filtered(lambda r: r.company_id == self.company_id)
- 
-        list_price = move.product_id.list_price or 0.00
+        list_price = self.product_id.list_price #list_price=sales price taken from product filed lst_price  is the price from pricelist 
+
+        taxes_ids = self.product_id.taxes_id.filtered(lambda r: r.company_id == self.company_id)
         if taxes_ids:
-            taxes = taxes_ids.compute_all(list_price, product=move.product_id)
-            list_price = taxes['total_excluded']
+#    def compute_all(self, price_unit, currency=None, quantity=1.0, product=None, partner=None, is_refund=False, handle_price_include=True):
+            taxes = taxes_ids.compute_all(price_unit=list_price, quantity=qty, product=self.product_id)
+            stock_value = taxes['total_excluded']
+        else:
+            stock_value = list_price * qty
 
-        if list_price <= cost and list_price != 0.0:
-            raise UserError(_( "You cannot move a product if price list is lower than cost price. Please update list price to suit to be higher than %s" % cost))
+        if stock_value <= cost:  #??? and list_price != 0.0:
+            raise UserError(_(f"You cannot move a product '{self.product_id.name}' if price list is lower than cost price. Please update list price to suit to be higher than {stock_value}/{qty}"))
+        account_move_lineS += [(acc_src, acc_dest_price_diff.id, journal_id,qty, description, svl_id, stock_value-cost)]
 
-        # the standard_price of the product may be in another decimal precision, or not compatible with the coinage of
-        # the company currency... so we need to use round() before  creating the accounting entries.
-        stock_value = self.company_id.currency_id.round(cost_price * abs(qty))
-        valuation_amount = list_price * abs(qty) - stock_value
-        uneligible_tax = 0
+# uneligible tax
+        uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
+        acc_uneligibl_tax = self.company_id.property_uneligible_tax_account_id.id
+        if not acc_dest_price_diff:
+            raise UserError(_(
+                'Configuration error. Please configure the price difference account on the location or product or its category to process this operation.'))
 
-        if taxes_ids:
-            # tva la valoarea de vanzare
-            taxes = taxes_ids.compute_all(self.product_id.list_price, product=self.product_id, quantity=abs(qty))
-            round_diff = taxes['total_excluded'] - valuation_amount - stock_value
-            uneligible_tax = taxes['total_included'] - taxes['total_excluded'] + round_diff
+        account_move_lineS += [(acc_src, acc_uneligibl_tax, journal_id,qty, description, svl_id, uneligible_tax)]
 
-        self = move.with_context(force_valuation_amount=valuation_amount, forced_quantity=0.0)
-        if refund:
-            acc_src, acc_dest = acc_dest, acc_src
+#         self = move.with_context(force_valuation_amount=valuation_amount, forced_quantity=0.0)
+#         if refund:
+#             acc_src, acc_dest = acc_dest, acc_src
 
-        self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
-    
+        self._create_account_move_lineS(account_move_lineS)
     
     
     ##################################Old functions to delete
