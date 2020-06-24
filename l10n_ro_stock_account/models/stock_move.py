@@ -463,62 +463,7 @@ production_store
         else:
             pass
             # we are not going to create accounting entries at this transfer because the accounts are the same
-    
-    
-    
-    ##################################Old functions to delete
-    ##################################Old functions to delete
-     ##################################Old functions to delete
-      ##################################Old functions to delete 
-    
-    
-    
-    def _create_account_transit_out(self, qty ,description, svl_id, cost):
-        "trasit_out   "
-        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
-        stock_transfer_account = move.company_id.property_stock_transfer_account_id 
-        acc_dest = stock_transfer_account.id  
-        acc_src = accounts_data['stock_valuation']
-        self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
-        journal_id = accounts_data['stock_journal'].id
-        # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
-    
-    def _create_account_transit_in(self, qty ,description, svl_id, cost):
-        "trasit_in     "
-        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
-        stock_transfer_account = move.company_id.property_stock_transfer_account_id 
-        acc_src = stock_transfer_account.id  
-        acc_dst = accounts_data['stock_valuation']
-        self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
-        journal_id = accounts_data['stock_journal'].id
-        # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
 
-
-    
-    def _create_account_transfer(self, qty ,description, svl_id, cost):
-        """transfer   permit_same_account=True     
- O societate poate avea magazine diferite, evidentiate in contabilitate ca analitice diferite. 
- Transferul de la un magazin la altul se face cu notele contabile :
-–iesirea din magazinul X:
-                                 %                            =       371 Marfuri/analitic X
-378 Diferente de pret la marfuri /analitic X
-4428 TVA neexigibila /analitic X
-
-– intrarea in magazinul Y:
- 371 Marfuri/analytic  Y                  =                    %
-                                                                  378 Diferente de pret la marfuri/analitic Y
-                                                                4428 TVA neexigibila/analitic Y"""
-        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
-        stock_transfer_account = move.company_id.property_stock_transfer_account_id 
-        acc_src = stock_transfer_account.id  
-        acc_dst = accounts_data['stock_valuation']
-        journal_id = accounts_data['stock_journal'].id
-        # is creating a account_move type entry and  corresponding account_move_lines
-        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
-    
-    
     def _create_account_reception_in_store_14(self, qty ,description, svl_id, cost, refund=False):
         '''
         Receptions in location with inventory kept at list price
@@ -527,7 +472,8 @@ production_store
 https://www.contzilla.ro/monografii-contabile-pentru-activitatea-unui-magazin-comert-cu-amanuntul/
 b) Calcularea si inregistrarea diferentelor de pret la marfuri
 
-Datorita faptului ca pentru evidentierea in contabilitate a marfurilor entitatea utilizeaza pretul cu amanuntul, ulterior inregistrarii stocurilor la cost de achizitie, se calculeaza si se inregistreaza diferentele de pret care vin sa corecteze valoarea de achizitie pana la nivelul pretului de vanzare cu amanuntul, astfel:
+Datorita faptului ca pentru evidentierea in contabilitate a marfurilor entitatea utilizeaza pretul cu amanuntul, 
+ulterior inregistrarii stocurilor la cost de achizitie, se calculeaza si se inregistreaza diferentele de pret care vin sa corecteze valoarea de achizitie pana la nivelul pretului de vanzare cu amanuntul, astfel:
 
 Adaosul comercial = 30% * pretul de achizitie = 30% * 100.000 lei = 30.000 lei
 
@@ -537,7 +483,7 @@ Pentru a se obtine pretul de vanzare cu amanuntul se utilizeaza urmatoarea formu
 
 Capture
 
-***) Tva –ul se reflecta in pretul de vanzare cu amanuntul insa devine exigibil numai cand se realizeaza vanzarea marfurilor . Pana la acel moment se reflecta in contul 4428 Tva neexigibil, dupa care se reflecta in contul 4427 Tva colectata.
+***) Tva –ul se reflecta in pretul de vanzare cu amanuntul insa devine exigibil numai cand se realizeaza vanzarea marfurilor. Pana la acel moment se reflecta in contul 4428 Tva neexigibil, dupa care se reflecta in contul 4427 Tva colectata.
 
 Prin urmare, pretul de vanzare cu amanuntul = 100.000 lei + 30.000 lei + 24.700 lei = 154.700 lei
 
@@ -593,6 +539,40 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
             acc_src, acc_dest = acc_dest, acc_src
 
         self._create_account_move_line(acc_src, acc_dest, journal_id,qty, description=description, svl_id=svl_id, cost=cost)
+    
+    
+    
+    ##################################Old functions to delete
+    ##################################Old functions to delete
+     ##################################Old functions to delete
+      ##################################Old functions to delete 
+    
+    
+    
+
+    
+    def _create_account_transfer(self, qty ,description, svl_id, cost):
+        """transfer   permit_same_account=True     
+ O societate poate avea magazine diferite, evidentiate in contabilitate ca analitice diferite. 
+ Transferul de la un magazin la altul se face cu notele contabile :
+–iesirea din magazinul X:
+                                 %                            =       371 Marfuri/analitic X
+378 Diferente de pret la marfuri /analitic X
+4428 TVA neexigibila /analitic X
+
+– intrarea in magazinul Y:
+ 371 Marfuri/analytic  Y                  =                    %
+                                                                  378 Diferente de pret la marfuri/analitic Y
+                                                                4428 TVA neexigibila/analitic Y"""
+        accounts_data = self.product_id.product_tmpl_id.get_product_accounts()
+        stock_transfer_account = move.company_id.property_stock_transfer_account_id 
+        acc_src = stock_transfer_account.id  
+        acc_dst = accounts_data['stock_valuation']
+        journal_id = accounts_data['stock_journal'].id
+        # is creating a account_move type entry and  corresponding account_move_lines
+        self._create_account_move_line([(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)])
+    
+    
  
  
  

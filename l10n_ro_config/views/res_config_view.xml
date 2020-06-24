@@ -239,7 +239,7 @@
                                         <div class="row mt16">
                                             <label for="property_uneligible_tax_account_id"
                                                    class="col-lg-3 o_light_label"/>
-                                            <field name="property_uneligible_tax_account_id" placeholder="cont pentru tva neexigibil in notele facute pentru 'Marfa in magazin'"/>
+                                            <field name="property_uneligible_tax_account_id" placeholder="use 4428 cont pentru tva neexigibil in notele facute pentru 'Marfa in magazin'"/>
                                         </div>
 
                                         <div class="row mt16">
