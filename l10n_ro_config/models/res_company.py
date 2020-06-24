@@ -92,7 +92,7 @@ class res_company(models.Model):
     property_uneligible_tax_account_id = fields.Many2one('account.account',
                                                            string="Uneligible Tax Account",
                                                            domain="[('internal_type', '=', 'other'),('company_id','=',company_id)]",
-                                                           help="This account will be used as the uneligible tax account for account move line.")
+                                                           help="This account will be used as the uneligible tax account for account move line.\nUse 4428")
 
     property_tax_cash_basis_journal_default_debit_account_id = fields.Many2one('account.account',
                                                            related="tax_cash_basis_journal_id.default_debit_account_id",readonly=False,
