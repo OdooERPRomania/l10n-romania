@@ -184,8 +184,8 @@ we overide this because otherwise will not make accounting entries for internal 
         stock_move_type = "_store" if store else '' + '_notice' if notice else ''
         stock_move_type_initial = stock_move_type
 
-        company_from = self._is_out() and self.mapped('move_line_ids.location_id.company_id') or False
-        company_to = self._is_in() and self.mapped('move_line_ids.location_dest_id.company_id') or False
+#         company_from = self._is_out() and self.mapped('move_line_ids.location_id.company_id') or False
+#         company_to = self._is_in() and self.mapped('move_line_ids.location_dest_id.company_id') or False
 
         if self.origin_returned_move_id:     ############# is a refund   ############# is a refund  ############# is a refund ############# is a refund 
             _logger.info(f"is a returned move of this move {self.origin_returned_move_id}")
@@ -251,12 +251,12 @@ we overide this because otherwise will not make accounting entries for internal 
                 
             elif location_to.usage == "production":
                 stock_move_type += "_consume"
-                self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=False, notice=notice, delivery=True,consume=True)
+                self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=store, notice=notice, delivery=True,consume=True)
 #                self._create_consume(qty=qty ,description=description, svl_id=svl_id, cost=cost)
                  
             elif location_to.usage == "inventory":
                 stock_move_type += "inventory_minus"
-                self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=False, notice=notice, inventory=True, delivery=True)
+                self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=store, notice=notice, inventory=True, delivery=True)
 #                self._create_inventory_minus( qty=qty ,description=description, svl_id=svl_id, cost=cost)
 
             
@@ -389,7 +389,7 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
         acc_dest = accounts_data['stock_valuation'].id  
         journal_id = accounts_data['stock_journal'].id
         account_move_lineS = []
-        if inventory or notice: 
+        if inventory or notice or transfer or consume or production or transit: 
             if transfer:
                 acc_dest =  self.location_id.valuation_out_account_id.id or accounts_data['stock_valuation'].id  
                 acc_src = self.location_dest_id.valuation_in_account_id.id or accounts_data['stock_valuation'].id
@@ -422,15 +422,16 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
                     raise UserError(f"Something is wrong at creating accounting entry at reception.\n please configure property_stock_picking_receivable/payable_account_id in romanian settings ")
 
             self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
-            if delivery:
-                acc_src, acc_dest = acc_dest,dest
+#             if delivery:        not necessary because the value is with - ?
+#                 acc_src, acc_dest = acc_dest,acc_src
             account_move_lineS = [(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)]
+#            account_move_lineS = [(acc_dest, acc_src, journal_id,qty, description, svl_id, cost)]
 
         if store: 
     # price difference account
-            acc_src_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id or \
-                                    self.product_id.property_account_creditor_price_difference or \
-                                    self.product_id.categ_id.property_account_creditor_price_difference_categ
+            acc_src_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id.id or \
+                                    self.product_id.property_account_creditor_price_difference.id or \
+                                    self.product_id.categ_id.property_account_creditor_price_difference_categ.id
     
             if not acc_src_price_diff:
                 raise UserError(_(
@@ -446,12 +447,12 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
             else:
                 stock_value = list_price * qty
     
-            if stock_value <= cost:  #??? and list_price != 0.0:
+            if abs(stock_value) <= abs(cost):  #??? and list_price != 0.0:
                 raise UserError(_(f"You cannot move a product '{self.product_id.name}' if price list is lower than cost price. Please update list price to suit to be higher than {stock_value}/{qty}"))
-            self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
-            if delivery:
-                acc_src, acc_dest = acc_dest,dest
-            account_move_lineS += [(acc_src_price_diff.id, acc_dest, journal_id,qty, description, svl_id, stock_value-cost)]
+            self._valid_only_if_dif_credit_debit_account(acc_src_price_diff, acc_dest)
+#             if delivery:
+#                 acc_src_price_diff, acc_dest = acc_dest,acc_src_price_diff
+            account_move_lineS += [(acc_src_price_diff, acc_dest, journal_id,qty, description, svl_id, stock_value-cost)]
     
             # uneligible tax
             uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
@@ -460,9 +461,9 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
                 if not acc_uneligibl_tax:
                     raise UserError(_(
                         'Configuration error. Please configure in romania company settings property_uneligible_tax_account_id .'))
-                self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
-                if delivery:
-                    acc_src, acc_dest = acc_dest,dest
+                self._valid_only_if_dif_credit_debit_account(acc_uneligibl_tax, acc_dest)
+#                 if delivery:
+#                     acc_uneligibl_tax, acc_dest = acc_dest,acc_uneligibl_tax
                 account_move_lineS += [(acc_uneligibl_tax, acc_dest, journal_id,qty, description, svl_id, uneligible_tax)]
     
     
