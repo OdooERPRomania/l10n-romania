@@ -11,7 +11,6 @@ _logger = logging.getLogger(__name__)
 
 
 # all just adds a field in view;  
-# must verify if action_cancel_draft is deleting also the account.move or we need this
 class StockInventory(models.Model):
     _inherit = "stock.inventory"
     
@@ -31,18 +30,5 @@ class StockInventory(models.Model):
             acc_move_line_ids.write({"stock_inventory_id": inv.id})
         return res
 
-    def action_cancel_draft(self):        # without this is not going to delete he account_move_ids ??
-        for inv in self:
-            for move in inv.move_ids:
-                if move.account_move_ids:
-                    move.account_move_ids.cancel()
-                    move.account_move_ids.unlink()
-        return super().action_cancel_draft()
-
-# exists in stock app
-#     def unlink(self):
-#         if any(inv.state not in ("draft", "cancel") for inv in self):
-#             raise UserError(_("You can only delete draft inventory."))
-#         return super().unlink()
-
+ 
 

@@ -97,8 +97,8 @@ production  "Reception from production" 345" Produse finite" =711 "Venituri afer
 transfer  371.gest1= 371.gest2 5 lei doar daca conturile sunt diferite daca exista cel putin un cont pe locatie si unul la produs
 transfer_store
 
-transit_in   30x =482
-transit_out   482 = 30x
+transit_in   30x =482   decont intre subunitati
+transit_out   482 = 30x   decont intre subunitati
             
 consume_store 
 production_store

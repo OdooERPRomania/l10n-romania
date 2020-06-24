@@ -12,7 +12,8 @@ class AccountMove(models.Model):
 
 
     def _stock_account_prepare_anglo_saxon_in_lines_vals(self):
-        ''' ORIGINAL FROM PURCHASE_STOCK (is adding lines at purchase) that is overridden of stock_account _stock_account_prepare_anglo_saxon_in_lines_vals (that is adding accounting lines at sale)
+        ''' can be done simpler by comparing the accounting notes like in version from 6-10 June
+        ORIGINAL FROM PURCHASE_STOCK (is adding lines at purchase) that is overridden of stock_account _stock_account_prepare_anglo_saxon_in_lines_vals (that is adding accounting lines at sale)
             
         Prepare values used to create the journal items (account.move.line) corresponding to the price difference
          lines for vendor bills.

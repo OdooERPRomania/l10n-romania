@@ -24,7 +24,7 @@ class AccountMoveLine(models.Model):
     )
 
 
-# MAUBE OK? NOT TO CHAGE IN INVOICE QTY OF RECIVEND PRODUCTS???
+# MAyBE OK? NOT TO CHAGE IN INVOICE QTY OF RECIVEND PRODUCTS???
     # @api.onchange('quantity')
     # def _onchange_quantity(self):
     #     message = ''
