@@ -198,14 +198,22 @@ we overide this because otherwise will not make accounting entries for internal 
                     _logger.info('refund reception no accounting entries because no accounting entries were done')
             elif location_from.usage == "customer" and location_to.usage == "internal":
                 stock_move_type += "_delivery_refund"
-                if notice:
-                    _logger.info("refund delivery with notice/aviz   reversed accouting entries")
-                    self._create_account_delivery_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, refund=True)
-                elif store:
-                    _logger.info("refund store delivery with notice/aviz reversed accountinf entries")
+                if notice or store:
+                    _logger.info( 'refund delivery notice or store reversing accounting entries')
+                    original_accounting_move = self.env['account.move'].search([('state','=','posted'),('stock_move_id','=', self.origin_returned_move_id.id)])
+                    refund_accounting_values = {'stock_move_id':self.id, 'journal_id':original_accounting_move.journal_id.id}
+                    if self.origin_returned_move_id.product_qty !=  qty:  # partial refund, we must modify the accounting move lines
+                        orig_acc_lines = original_accounting_move.with_context(include_business_fields=True).copy_data()[0]['line_ids']
+                        for orig_acc_line in orig_acc_lines :
+                            orig_acc_line[2]['quantity'] = qty
+                            orig_acc_line[2]['debit'] *= -1*qty/self.origin_returned_move_id.product_qty 
+                            orig_acc_line[2]['credit'] *= -1*qty/self.origin_returned_move_id.product_qty
+                        refund_accounting_values['line_ids'] = orig_acc_lines
+                    reversed_account_move = original_accounting_move._reverse_moves(default_values_list=[refund_accounting_values])
+                    reversed_account_move.post()
                 else:
                     _logger.info('refund delivery NO accounting entries ')
-                    
+
         elif location_from.usage == "supplier":  ############### is NOT refund 
             if  location_to.usage == "internal":
                 stock_move_type +=  "_reception"
