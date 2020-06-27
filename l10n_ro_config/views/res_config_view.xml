@@ -193,6 +193,16 @@
                                 </div>
                             </div>
 
+                           <div class="col-xs-12 col-md-6 o_setting_box" id="module_l10n_ro_stock_picking_report">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_l10n_ro_stock_picking_report"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="module_l10n_ro_stock_picking_report" />
+                                    <div class="text-muted" >Adds romanian legal picking reports </div>
+                                </div>
+                            </div>
+
 
                             <div class="col-12 col-lg-6 o_setting_box" id="module_l10n_ro_stock_account">
                                 <div class="o_setting_left_pane">

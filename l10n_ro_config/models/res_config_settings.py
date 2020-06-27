@@ -57,6 +57,7 @@ class ResConfigSettings(models.TransientModel):
     use_anglo_saxon = fields.Boolean(string='Anglo-Saxon Accounting', related='company_id.anglo_saxon_accounting', readonly=True)
     module_l10n_ro_stock = fields.Boolean('Romanian Stock',
                                           help='Methods of usage giving and consumption')
+    module_l10n_ro_stock_picking_report = fields.Boolean('Romanian Stock picking report', help="Romanian legal documents at picking")
     module_l10n_ro_stock_account = fields.Boolean('Romanian Stock Accounting',
                                                   help='This allows you to manage the Romanian adaptation for stock, including:\n'
                                                        'New stock accounts on location to allow moving entry in accounting based on the stock move.\n'
