@@ -67,10 +67,6 @@ class ProductTemplate(models.Model):
                 'stock_valuation': self.property_stock_valuation_account_id,
             })
 
-# ???????????????????
-#         fix_stock_input = self.env.context.get("fix_stock_input")
-#         if fix_stock_input:
-#             accounts["stock_input"] = fix_stock_input
         return accounts
 
 
@@ -203,31 +199,3 @@ class ProductTemplate(models.Model):
 
         return True
 
-
-class ProductProduct(models.Model):
-    _inherit = "product.product"
-
-#     # TO CHECK - METODA NU MAI EXISTA
-#     @api.model
-#     def _convert_prepared_anglosaxon_line(self, line, partner):
-#         res = super()._convert_prepared_anglosaxon_line(
-#             line, partner
-#         )
-#         res["stock_location_id"] = line.get("stock_location_id", False)
-#         res["stock_location_dest_id"] = line.get("stock_location_dest_id", False)
-#         return res
-
-#     # TO CHECK - METODA NU MAI EXISTA
-#     def _compute_stock_value(self):
-#         location = self.env.context.get("location")
-#         return super()._compute_stock_value()
-
-# 202006 exists in account.move  and i cnan use them
-#     def _stock_account_anglo_saxon_reconcile_valuation(self, product=False):
-#         """ Reconciles the entries made in the interim accounts in anglosaxon accounting,
-#         reconciling stock valuation move lines with the invoice's.
-#         """
-# 
-#     def _stock_account_prepare_anglo_saxon_out_lines_vals(self):
-#         ''' Prepare values used to create the journal items (account.move.line) corresponding to the Cost of Good Sold
-#         lines (COGS) for customer invoices.
