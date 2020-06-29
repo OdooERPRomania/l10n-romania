@@ -5,7 +5,9 @@
     "category": "Localization",
     "summary": "Romania - stock = adds location in_custody, usage_giving,consume *merchandise_type:store,warehouse ",
     "depends": ["stock"],
-    "data": ["views/stock_warehouse_view.xml", "views/stock_location_view.xml"],
+    "data": ["views/stock_warehouse_view.xml", 
+             "views/stock_location_view.xml",
+             "views/stock_picking_view.xml"],
     "license": "AGPL-3",
     "version": "1.0",
     "author": "OdooERP Romania,"

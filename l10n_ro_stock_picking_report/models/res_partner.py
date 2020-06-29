@@ -3,9 +3,13 @@
 #              Dorin Hongu <dhongu(@)gmail(.)com
 # See README.rst file on addons root folder for license details
 
-from . import stock_picking
-from . import purchase
-from . import account_invoice
-from . import res_partner
-from . import stock_location
 
+
+from odoo import models, fields, api, _
+
+
+
+class res_partner(models.Model):
+    _inherit = 'res.partner'
+
+    mean_transp = fields.Char(string='Mean transport')

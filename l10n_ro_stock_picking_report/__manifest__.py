@@ -31,8 +31,8 @@ Romania - Picking Report layout
 
     "data": [
         'views/l10n_ro_stock_picking_report.xml',
-        'views/report_picking.xml',
-        'views/stock_view.xml'
+        'report/report_picking.xml',
+        'views/stock_picking_view.xml'
 
     ],
     "active": False,

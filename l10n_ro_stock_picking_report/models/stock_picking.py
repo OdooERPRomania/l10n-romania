@@ -4,23 +4,8 @@
 # See README.rst file on addons root folder for license details
 
 
-
 from odoo import models, fields, api, _
 
-
-
-class res_partner(models.Model):
-    _inherit = 'res.partner'
-
-    mean_transp = fields.Char(string='Mean transport')
-
-
-class stock_location(models.Model):
-    _inherit = "stock.location"
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
-
-
-    user_id = fields.Many2one('res.users', string='Manager')
 
 
 class stock_picking(models.Model):
@@ -30,9 +15,9 @@ class stock_picking(models.Model):
     delegate_id = fields.Many2one('res.partner', string='Delegate')
     mean_transp = fields.Char(string='Mean transport')
 
-
-    notice = fields.Boolean('Is a notice', states={'done': [('readonly', True)], 'cancel': [('readonly', True)]},
-                                default=False)
+# moved in l10n_ro_stock to function this also without stock_accounting
+#     notice = fields.Boolean('Is a notice', states={'done': [('readonly', True)], 'cancel': [('readonly', True)]},
+#                                 default=False)
 
     '''
     invoice_state = fields.Selection([("invoiced", "Invoiced"),
