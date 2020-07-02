@@ -176,33 +176,20 @@ we overide this because otherwise will not make accounting entries for internal 
 
 #         company_from = self._is_out() and self.mapped('move_line_ids.location_id.company_id') or False
 #         company_to = self._is_in() and self.mapped('move_line_ids.location_dest_id.company_id') or False
-
+        delivery = False
         if self.origin_returned_move_id:     ############# is a refund   ############# is a refund  ############# is a refund ############# is a refund 
             _logger.info(f"is a returned move of this move {self.origin_returned_move_id}")
             if location_from.usage == "internal" and location_to.usage == "supplier":
                 stock_move_type += "_reception_refund"
-                if notice or store:
-                    _logger.info( 'refund reception notice or store reversing accounting entries')
-                    original_accounting_move = self.env['account.move'].search([('state','=','posted'),('stock_move_id','=', self.origin_returned_move_id.id)])
-                    refund_accounting_values = {'stock_move_id':self.id, 'journal_id':original_accounting_move.journal_id.id}
-                    if self.origin_returned_move_id.product_qty != -1 * qty:  # partial refund, we must modify the accounting move lines
-                        orig_acc_lines = original_accounting_move.with_context(include_business_fields=True).copy_data()[0]['line_ids']
-                        for orig_acc_line in orig_acc_lines :
-                            orig_acc_line[2]['quantity'] = qty
-                            orig_acc_line[2]['debit'] *= -1*qty/self.origin_returned_move_id.product_qty 
-                            orig_acc_line[2]['credit'] *= -1*qty/self.origin_returned_move_id.product_qty
-                        refund_accounting_values['line_ids'] = orig_acc_lines
-                    reversed_account_move = original_accounting_move._reverse_moves(default_values_list=[refund_accounting_values])
-                    reversed_account_move.post()
-                else:
-                    _logger.info('refund reception no accounting entries because no accounting entries were done')
             elif location_from.usage == "customer" and location_to.usage == "internal":
                 stock_move_type += "_delivery_refund"
+                delivery = True
+            if "refund" in stock_move_type:
                 if notice or store:
-                    _logger.info( 'refund delivery notice or store reversing accounting entries')
+                    _logger.info( f'{stock_move_type}  notice or store reversing accounting entries')
                     original_accounting_move = self.env['account.move'].search([('state','=','posted'),('stock_move_id','=', self.origin_returned_move_id.id)])
                     refund_accounting_values = {'stock_move_id':self.id, 'journal_id':original_accounting_move.journal_id.id}
-                    if self.origin_returned_move_id.product_qty !=  qty:  # partial refund, we must modify the accounting move lines
+                    if self.origin_returned_move_id.product_qty != (-1 if not delivery else 1) * qty:  # partial refund, we must modify the accounting move lines
                         orig_acc_lines = original_accounting_move.with_context(include_business_fields=True).copy_data()[0]['line_ids']
                         for orig_acc_line in orig_acc_lines :
                             orig_acc_line[2]['quantity'] = qty
@@ -212,17 +199,14 @@ we overide this because otherwise will not make accounting entries for internal 
                     reversed_account_move = original_accounting_move._reverse_moves(default_values_list=[refund_accounting_values])
                     reversed_account_move.post()
                 else:
-                    _logger.info('refund delivery NO accounting entries ')
+                    _logger.info(f'{stock_move_type} no accounting entries because no accounting entries were done')
 
         elif location_from.usage == "supplier":  ############### is NOT refund 
             if  location_to.usage == "internal":
                 stock_move_type +=  "_reception"
-                if store:
+                if store or notice:
                     self.stock_move_type = stock_move_type
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, notice=notice)
-                elif notice:
-                    self.stock_move_type = stock_move_type
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, store=False, cost=cost, notice=notice)
+                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, store=store, cost=cost, notice=notice)
                 else:
                     _logger.info(f"Nici o nota contabila pe receptie pt ca e in factura 371+4426 = 401")
                     self.stock_move_type = stock_move_type
@@ -232,13 +216,9 @@ we overide this because otherwise will not make accounting entries for internal 
         elif location_from.usage == "internal":
             if location_to.usage == "customer":
                 stock_move_type += "_delivery"   ##############  delivery   ##############  delivery
-                if store:  
-                    _logger.info(f"Nota contabila livrare din magazin stock_move_type={stock_move_type}")
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, notice=notice, delivery=True)
-                elif notice:
-                    _logger.info(f"Nota contabila livrare cu aviz stock_move_type={stock_move_type}")
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=False, notice=notice, delivery=True)
-                else:
+                if store or notice:  
+                    _logger.info(f"Nota contabila livrare din store={store} aviz={notice} stock_move_type={stock_move_type}")
+                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=store, notice=notice, delivery=True)
                     self.stock_move_type = stock_move_type
                     _logger.info(f"Nici o nota contabila delivery pt ca e in factura 371+4426 = 401")
                     return
@@ -253,10 +233,7 @@ we overide this because otherwise will not make accounting entries for internal 
             
             elif location_to.usage == "internal":
                 stock_move_type += "_transfer"
-                if store:  
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=True, notice=notice, inventory=False, delivery=True) # or false?
-                else:
-                    self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=False, notice=notice, inventory=False, delivery=True)
+                self._create_account_reception_in_store_14( qty=qty ,description=description, svl_id=svl_id, cost=cost, store=store, notice=notice, inventory=False, delivery=True) # or false?
                 
             elif location_to.usage == "transit":
                 #Transit Location: Counterpart location that should be used in inter-company or inter-warehouses operations
@@ -432,14 +409,11 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
             self._create_account_move_lineS([(acc_src1, acc_dest2, journal_id,qty, description, svl_id, cost)])
     
     
-# to do it at the end of normal tranfers
-#     def _is_dropshipped(self):
-#         stock_move_type = self.stock_move_type
-#         if not stock_move_type:
-#             stock_move_type = self.get_stock_move_type()
-#         if stock_move_type and ("transfer" in stock_move_type or "transit" in stock_move_type):
-#             return True
-#         return super()._is_dropshipped()
+    def _is_dropshipped(self):        ### to verify
+        stock_move_type = self.stock_move_type
+        if stock_move_type and ("transfer" in stock_move_type or "transit" in stock_move_type):
+            return True
+        return super()._is_dropshipped()
 
 
 

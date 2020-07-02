@@ -5,7 +5,6 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_is_zero
 
 
 class ProductCategory(models.Model):
