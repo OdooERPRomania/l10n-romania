@@ -335,8 +335,12 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
         acc_dest = accounts_data['stock_valuation'].id  
         journal_id = accounts_data['stock_journal'].id
         account_move_lineS = []
-        if inventory or notice or transfer or consume or production or transit: 
-            if transfer:
+        if inventory or notice or transfer or consume or production or transit or (store and delivery and notice): 
+            if store and delivery and notice:
+                # descarcare de gestiune la pretul de cost
+                acc_src = accounts_data['income'].id  #!!!!!!!!!!!!!!!!  aici trebuie luat un alt cont si nu stiu de unde de ex 711 
+                acc_dst = accounts_data['stock_valuation'].id
+            elif transfer:
                 acc_dest =  self.location_id.valuation_out_account_id.id or accounts_data['stock_valuation'].id  
                 acc_src = self.location_dest_id.valuation_in_account_id.id or accounts_data['stock_valuation'].id
                 if acc_src == acc_dest:     
@@ -367,42 +371,85 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
                 if not acc_src:
                     raise UserError(f"Something is wrong at creating accounting entry at reception.\n please configure property_stock_picking_receivable/payable_account_id in romanian settings ")
 
+
             self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
 
             account_move_lineS = [(acc_src, acc_dest, journal_id,qty, description, svl_id, cost)]
 
         if store:     
-            # price difference account
-            acc_src_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id.id or \
-                                    self.product_id.property_account_creditor_price_difference.id or \
-                                    self.product_id.categ_id.property_account_creditor_price_difference_categ.id
-    
-            if not acc_src_price_diff:
-                raise UserError(_(
-                    'Configuration error. Please configure the price difference account on the location or product or its category to process this operation.'))
-            
-            list_price = self.product_id.list_price #list_price=sales price taken from product filed lst_price  is the price from pricelist 
-            taxes_ids = self.product_id.taxes_id.filtered(lambda r: r.company_id == self.company_id)
-            if taxes_ids:
-                taxes = taxes_ids.compute_all(price_unit=list_price, quantity=qty, product=self.product_id)
-                stock_value = taxes['total_excluded']
-            else:
-                stock_value = list_price * qty
-    
-            if abs(stock_value) <= abs(cost):  #??? and list_price != 0.0:
-                raise UserError(_(f"You cannot move a product '{self.product_id.name}' if price list is lower than cost price. Please update list price to suit to be higher than {stock_value}/{qty}"))
-            self._valid_only_if_dif_credit_debit_account(acc_src_price_diff, acc_dest)
-            account_move_lineS += [(acc_src_price_diff, acc_dest, journal_id,qty, description, svl_id, stock_value-cost)]
-    
-            # uneligible tax  | tva neexigibil
-            uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
-            if uneligible_tax:
-                acc_uneligibl_tax = self.company_id.property_uneligible_tax_account_id.id
-                if not acc_uneligibl_tax:
+            if not delivery:    
+                # price difference account
+                acc_src_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id.id or \
+                                        self.product_id.property_account_creditor_price_difference.id or \
+                                        self.product_id.categ_id.property_account_creditor_price_difference_categ.id
+        
+                if not acc_src_price_diff:
                     raise UserError(_(
-                        'Configuration error. Please configure in romania company settings property_uneligible_tax_account_id .'))
-                self._valid_only_if_dif_credit_debit_account(acc_uneligibl_tax, acc_dest)
-                account_move_lineS += [(acc_uneligibl_tax, acc_dest, journal_id,qty, description, svl_id, uneligible_tax)]
+                        'Configuration error. Please configure the price difference account on the location or product or its category to process this operation.'))
+                
+                list_price = self.product_id.list_price #list_price=sales price taken from product filed lst_price  is the price from pricelist 
+                taxes_ids = self.product_id.taxes_id.filtered(lambda r: r.company_id == self.company_id)
+                if taxes_ids:
+                    taxes = taxes_ids.compute_all(price_unit=list_price, quantity=qty, product=self.product_id)
+                    stock_value = taxes['total_excluded']
+                else:
+                    stock_value = list_price * qty
+        
+                if abs(stock_value) <= abs(cost):  #??? and list_price != 0.0:
+                    raise UserError(_(f"You cannot move a product '{self.product_id.name}' if price list is lower than cost price. Please update list price to suit to be higher than {stock_value}/{qty}"))
+                self._valid_only_if_dif_credit_debit_account(acc_src_price_diff, acc_dest)
+                account_move_lineS += [(acc_src_price_diff, acc_dest, journal_id,qty, description, svl_id, stock_value-cost)]
+        
+                # uneligible tax  | tva neexigibil
+                uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
+                if uneligible_tax:
+                    acc_uneligibl_tax = self.company_id.property_uneligible_tax_account_id.id
+                    if not acc_uneligibl_tax:
+                        raise UserError(_(
+                            'Configuration error. Please configure in romania company settings property_uneligible_tax_account_id .'))
+                    self._valid_only_if_dif_credit_debit_account(acc_uneligibl_tax, acc_dest)
+                    account_move_lineS += [(acc_uneligibl_tax, acc_dest, journal_id,qty, description, svl_id, uneligible_tax)]
+            elif delivery and notice:  # is delivery sale 
+# accounting entires on delivery from store only if delivery and notice; else all the accounting are going to be on invoice
+ # Societatea ABC livreaza pe baza de aviz de insotire a marfii firmei DEF produse finite pe care clientul urmeaza sa le comercializeze ca si 
+ #marfuri la pretul de fabricare fara TVA de 95.000 lei, TVA 20%. 
+ #In luna urmatoare, se intocmeste factura fiscala care se deconteaza in numerar. Costul de productie al produselor finite este de 82.000 lei. 
+#Contabilitatea firmei ABC:
+#livrarea produselor pe baza avizului:
+#    418 = %          114.000
+#          701        95.000
+#          4428      19.000
+#    descarcarea din gestiune:
+#    711 = 345       82.000
+#emiterea facturii:
+#    4111 = 418      114.000
+#    transformarea TVA neexigibil in TVA colectat:
+#   4 428 = 4427     19.000
+                acc_src = self.company_id.property_stock_picking_receivable_account_id.id  # 418
+                acc_dest = accounts_data['income'].id
+                if not acc_src:
+                    raise UserError(_('Configuration error. Please configure property_stock_picking_receivable_account_id in romanian stock configuration.'))
+                list_price = self.product_id.list_price #list_price=sales price taken from product filed lst_price  is the price from pricelist 
+                taxes_ids = self.product_id.taxes_id.filtered(lambda r: r.company_id == self.company_id)
+                if taxes_ids:
+                    taxes = taxes_ids.compute_all(price_unit=list_price, quantity=qty, product=self.product_id)
+                    stock_value = taxes['total_excluded']
+                else:
+                    stock_value = list_price * qty
+                if abs(stock_value) <= abs(cost):  #??? and list_price != 0.0:
+                    raise UserError(_(f"You cannot move a product '{self.product_id.name}' if price list is lower than cost price. Please update list price to suit to be higher than {stock_value}/{qty}"))
+                self._valid_only_if_dif_credit_debit_account(acc_src, acc_dest)
+                account_move_lineS += [(acc_src, acc_dest, journal_id,qty, description, svl_id, stock_value)]
+        
+                # uneligible tax  | tva neexigibil
+                uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
+                if uneligible_tax:
+                    acc_uneligibl_tax = self.company_id.property_uneligible_tax_account_id.id
+                    if not acc_uneligibl_tax:
+                        raise UserError(_(
+                            'Configuration error. Please configure in romania company settings property_uneligible_tax_account_id .'))
+                    self._valid_only_if_dif_credit_debit_account(acc_uneligibl_tax, acc_src)
+                    account_move_lineS += [(acc_src, acc_uneligibl_tax, journal_id,qty, description, svl_id, uneligible_tax)]
     
         self._create_account_move_lineS(account_move_lineS)
         if consume:
