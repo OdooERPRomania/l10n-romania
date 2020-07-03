@@ -99,6 +99,8 @@ class ProductTemplate(models.Model):
         product_accounts = { product.id: product.product_tmpl_id.get_product_accounts() for product in products}
         ref = self.env.context.get("ref", _("Price changed")+f" ->{new_price}")
         to_date = fields.Date.today()
+        acc_uneligibl_tax = self.env.company.property_uneligible_tax_account_id.id
+
         for location in locations:
             for product in products:
                 old_price = product.list_price
@@ -120,7 +122,6 @@ class ProductTemplate(models.Model):
 
                     debit_account_id = account_id.id
                     credit_account_id = product_accounts[product.id][ "stock_valuation"].id
-
                     if diff * qty_available < 0:
                         debit_account_id, credit_account_id = credit_account_id, debit_account_id
                     name =  _("List Price changed ") + product.display_name  +f" {product.list_price}->{new_price} X {product.qty_available}"
@@ -146,6 +147,33 @@ class ProductTemplate(models.Model):
                                     "stock_location_id": location.id,
                                 }, ), ],
                                 }
+# neeligible vat taxes
+                    taxes_ids = product.taxes_id.filtered(lambda r: r.company_id == self.env.company)
+                    uneligible_tax =0
+                    if taxes_ids:
+                        taxes = taxes_ids.compute_all(price_unit=diff, quantity=qty_available, product=product)
+                        uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
+                    if uneligible_tax:  # add also the uneligible vat
+                        if not acc_uneligibl_tax:
+                            raise UserError(_('Configuration error. Please configure in Romania company settings property_uneligible_tax_account_id .'))
+                        debit_account_id = account_id.id
+                        credit_account_id = acc_uneligibl_tax
+                        if diff * qty_available < 0:
+                            debit_account_id, credit_account_id = credit_account_id, debit_account_id
+    
+                        move_vals["line_ids"].append((0, 0, {"name": 'neeligible tax' + name,
+                                                            "account_id": debit_account_id,
+                                                            "debit": abs(uneligible_tax),
+                                                            "credit": 0,
+                                                            "product_id": product.id,
+                                                            "stock_location_id": location.id, }))
+                        move_vals["line_ids"].append((0, 0, {"name": 'neeligible tax' + name,
+                                                        "account_id": credit_account_id,
+                                                        "debit": 0,
+                                                        "credit": abs(uneligible_tax),
+                                                        "product_id": product.id,
+                                                        "stock_location_id": location.id,}, ))
+                        
                     move = AccountMove.create(move_vals)
                     move.post()
 
