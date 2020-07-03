@@ -14,6 +14,7 @@ class SaleOrderLine(models.Model):
            Is setting account 418 that must be used if the goods where sent before the invoice
            Account 418 must be != recivable        if not it can not be put into invoice and also the base is wrong at computing taxes
            If location has a property_account_income_location_id we will give this instead of that from product
+           If is sale from a store will put also the noneligible vat 
         """
         res = super()._prepare_invoice_line(sequence=sequence)
         # Overwrite with at least one location with income account defined
