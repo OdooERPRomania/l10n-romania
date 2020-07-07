@@ -13,6 +13,9 @@
                    <field name="stock_move_type" invisible="0"/>
                    <field name="price_unit" attrs="{'invisible': [('picking_type_id','!=','incoming')]}"/>
                 </field>
+				<field name="origin" position="after">
+		           <field name="sale_line_id"/>
+				</field>
 				<group name="linked_group" position="before">
 					<group>
 						<field name="account_move_ids"/>

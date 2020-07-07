@@ -21,18 +21,20 @@
                  <page name="extra" position="after">
                     <page string="Accounting Entries+Stock Moves" groups="account.group_account_readonly">
 							<separator string="Stock Moves"/>
-							<field name="move_lines"/>
+								<field name="move_lines"/>
+							<separator string="Stock Moves Lines (Operation)"/>
+								<field name="move_line_ids"/>
 							<separator string="Account Move lines"/>
- 							<field name="acc_move_line_ids">
- 								<tree>
- 									<field name="date"/>
- 									<field name="account_id"/>
- 									<field name="partner_id"/>
- 									<field name="debit"/>
- 									<field name="credit"/>
- 									<field name="move_id" optional="hide"/>
- 								</tree>
- 							</field>
+	 							<field name="acc_move_line_ids">
+	 								<tree>
+	 									<field name="date"/>
+	 									<field name="account_id"/>
+	 									<field name="partner_id"/>
+	 									<field name="debit"/>
+	 									<field name="credit"/>
+	 									<field name="move_id" optional="hide"/>
+	 								</tree>
+	 							</field>
  							
                     </page>
                 </page>
