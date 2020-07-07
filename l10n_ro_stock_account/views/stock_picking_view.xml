@@ -21,7 +21,7 @@
                  <page name="extra" position="after">
                     <page string="Accounting Entries+Stock Moves" groups="account.group_account_readonly">
 							<separator string="Stock Moves"/>
-							<field name="stock_move_ids"/>
+							<field name="move_lines"/>
 							<separator string="Account Move lines"/>
  							<field name="acc_move_line_ids">
  								<tree>
