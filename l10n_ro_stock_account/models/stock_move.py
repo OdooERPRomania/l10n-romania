@@ -379,7 +379,7 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
         if store:     
             if not delivery:    
                 # price difference account
-                acc_src_price_diff = self.location_dest_id.property_account_creditor_price_difference_location_id.id or \
+                acc_src_price_diff = self.location_dest_id.property_account_creditor_price_diff_location_id.id or \
                                         self.product_id.property_account_creditor_price_difference.id or \
                                         self.product_id.categ_id.property_account_creditor_price_difference_categ.id
         

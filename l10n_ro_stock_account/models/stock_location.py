@@ -13,7 +13,7 @@ _logger = logging.getLogger(__name__)
 class stock_location(models.Model):
     _inherit = "stock.location"
 
-    property_account_creditor_price_difference_location_id = fields.Many2one(
+    property_account_creditor_price_diff_location_id = fields.Many2one(
         "account.account",
         string="Price Difference Account",
         help="This account will be used to value price difference between purchase price and cost price.",
