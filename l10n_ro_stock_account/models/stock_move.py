@@ -401,7 +401,9 @@ Notele contabile prin care se reflecta in contabilitate diferentele de pret sunt
                 account_move_lineS += [(acc_src_price_diff, acc_dest, journal_id,qty, description, svl_id, stock_value-cost)]
         
                 # uneligible tax  | tva neexigibil
-                uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
+                uneligible_tax = 0
+                if taxes_ids:
+                    uneligible_tax = taxes['total_included'] - taxes['total_excluded'] 
                 if uneligible_tax:
                     acc_uneligibl_tax = self.company_id.property_uneligible_tax_account_id.id
                     if not acc_uneligibl_tax:
