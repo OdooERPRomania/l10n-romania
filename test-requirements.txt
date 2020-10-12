@@ -1,0 +1,2 @@
+odoo14-addon-l10n_ro_config @ git+https://github.com/OCA/l10n-romania@refs/pull/104/head#subdirectory=setup/l10n_ro_config
+odoo14-addon-l10n_ro_stock @ git+https://github.com/OCA/l10n-romania@refs/pull/109/head#subdirectory=setup/l10n_ro_stock
