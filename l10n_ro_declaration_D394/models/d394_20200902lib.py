@@ -8,11 +8,9 @@ from odoo import fields, models
 
 
 class Declaratie394(models.AbstractModel):
+    _name = "anaf.d394.v30"
+    _inherit = "anaf.mixin"
     _description = "declaratie394"
-    _name = "D394.30.declaratie394"
-    _inherit = "spec.mixin.D394"
-    _generateds_type = "Declaratie394Type"
-    _concrete_rec_name = "D39430_luna"
 
     D39430_luna = fields.Integer(string="luna", xsd_required=True, xsd_type="integer")
     D39430_an = fields.Many2one(
