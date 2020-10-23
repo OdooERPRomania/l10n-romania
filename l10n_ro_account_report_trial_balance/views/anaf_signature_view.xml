@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- # Copyright (C) 2018 Terrabit
+     # Copyright (C) 2020 NextERP Romania
+     # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html). -->
+<odoo>
+    <record id="view_anaf_signature_tree" model="ir.ui.view">
+        <field name="name">anaf.signature.tree</field>
+        <field name="model">anaf.signature</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="type" />
+                <field name="function" />
+                <field name="vat" />
+                <field name="quality" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_anaf_signature_form" model="ir.ui.view">
+        <field name="name">anaf.signature.form</field>
+        <field name="model">anaf.signature</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="Anaf Signature">
+                <group>
+                    <field name="name" />
+                </group>
+                <group>
+                    <field name="type" />
+                    <field name="function" />
+                    <field name="vat" />
+                    <field name="quality" />
+                </group>
+            </form>
+        </field>
+    </record>
+    <record id="action_anaf_signature_view_menu" model="ir.actions.act_window">
+        <field name="name">ANAF Signature</field>
+        <field name="res_model">anaf.signature</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem
+        id="menu_action_anaf_signature"
+        name="ANAF Signature"
+        action="action_anaf_signature_view_menu"
+        parent="menu_action_anaf_configuration"
+    />
+</odoo>

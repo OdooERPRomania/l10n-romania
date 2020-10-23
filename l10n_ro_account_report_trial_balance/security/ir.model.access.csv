@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_anaf_declaration,access_anaf_declaration,model_anaf_declaration,account.group_account_user,1,1,1,1
+access_anaf_declaration_version,access_anaf_declaration_version,model_anaf_declaration_version,account.group_account_user,1,1,1,1
+access_anaf_signature,access_anaf_signature,model_anaf_signature,account.group_account_user,1,1,1,1
+access_anaf_mixin,access_anaf_mixin,model_anaf_mixin,account.group_account_user,1,1,1,1
+access_l10n_ro_run_declaration,access_l10n_ro_run_declaration,model_l10n_ro_run_declaration,base.group_user,1,1,1,1

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_run_declarations_form" model="ir.ui.view">
+        <field name="name">l10n_ro.run.declaration.wizard</field>
+        <field name="model">l10n_ro.run.declaration</field>
+        <field name="arch" type="xml">
+            <form string="Report Options">
+                <group name="main_info">
+                    <field
+                        name="company_id"
+                        options="{'no_create': True}"
+                        groups="base.group_multi_company"
+                    />
+                    <field name="declaration_id" />
+                    <field name="version_id" />
+                    <field name="signature_id" />
+                </group>
+                <group name="filters">
+                    <group name="date_range">
+                        <field
+                            name="date_range_id"
+                            domain="['|',('company_id','=',company_id), ('company_id','=',False)]"
+                        />
+                        <field name="date_from" />
+                        <field name="date_to" />
+                    </group>
+                </group>
+                <group>
+                    <label for="name" string="Save the File with '.xml' extension." />
+                    <field name="name" colspan="4" />
+                    <field name="file" readonly="True" filename="name" />
+                </group>
+                <footer>
+                    <button name="get_report" string="Execute" type="object" />
+                    or
+                    <button string="Cancel" class="oe_link" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_run_declaration" model="ir.actions.act_window">
+        <field name="name">Run Declaration</field>
+        <field name="res_model">l10n_ro.run.declaration</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem
+        id="l10n_ro_declaration.menu_run_declaration"
+        name="Run Declaration"
+        action="l10n_ro_declaration.action_run_declaration"
+        parent="account.menu_finance_reports"
+    />
+</odoo>

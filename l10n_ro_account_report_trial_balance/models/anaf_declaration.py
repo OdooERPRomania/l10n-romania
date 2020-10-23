@@ -26,4 +26,4 @@ class AnafDeclarationVersion(models.Model):
     declaration_id = fields.Many2one(
         "anaf.declaration", string="Declaration", required=True
     )
-    validator = fields.Many2one("ir.attachment", string="Validator File")
+    validator = fields.Binary(string="Validator File")

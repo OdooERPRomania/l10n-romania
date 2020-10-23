@@ -1,16 +1,16 @@
 # Copyright (C) 2018 Terrabit
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
-from base64 import b64encode
-from lxml import etree
+import logging
+from base64 import b64decode, b64encode
 
 from dateutil.relativedelta import relativedelta
-import logging
+from lxml import etree
 
-from odoo import api, fields, models, _
-from odoo.tools import xml_utils
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class AnafMixin(models.AbstractModel):
@@ -34,14 +34,26 @@ class AnafMixin(models.AbstractModel):
         required=True,
         default=lambda self: self.env["res.company"]._company_default_get("anaf.mixin"),
     )
-    bank_account_id = fields.Many2one("res.partner.bank", string="Bank Account")
+    bank_account_id = fields.Many2one(
+        "res.partner.bank",
+        string="Bank Account",
+        # domain=[("id", "in", company_id.partner_id.bank_ids.ids)]
+    )
 
-    declaration_id = fields.Many2one("anaf.declaration", string="ANAF Declaration")
+    declaration_id = fields.Many2one(
+        "anaf.declaration",
+        string="ANAF Declaration",
+        required=True,
+        default=_get_default_date_to,
+    )
     version_id = fields.Many2one(
-        "anaf.declaration.version", string="ANAF Declaration Version"
+        "anaf.declaration.version", string="ANAF Declaration Version", required=True
     )
     signature_id = fields.Many2one(
-        "anaf.signature", string="SSL Signature", help="SSL Signature of the Document"
+        "anaf.signature",
+        string="SSL Signature",
+        help="SSL Signature of the Document",
+        required=True,
     )
 
     date_range_id = fields.Many2one(comodel_name="date.range", string="Date range")
@@ -86,6 +98,35 @@ class AnafMixin(models.AbstractModel):
             month = "{:2s}".format(str(month).zfill(2))
         return year, month
 
+    @api.model
+    def validate_report(self, xsd_schema_doc, content):
+        """
+        Validate final xml file against xsd_schema`
+
+        Args:
+         * xsd_schema_doc(byte-string) - report validation schema
+         * content(str) - report content for validation
+
+        Raises:
+         * odoo.exceptions.ValidationError - Syntax of final report is wrong
+
+        Returns:
+         * bool - True
+        """
+        if xsd_schema_doc:
+            # create validation parser
+            decoded_xsd_schema_doc = b64decode(xsd_schema_doc)
+            parsed_xsd_schema = etree.XML(decoded_xsd_schema_doc)
+            xsd_schema = etree.XMLSchema(parsed_xsd_schema)
+            parser = etree.XMLParser(schema=xsd_schema)
+
+            try:
+                # check content
+                etree.fromstring(content, parser)
+            except etree.XMLSyntaxError as error:
+                raise ValidationError(error.msg)
+        return True
+
     @api.depends("declaration_id", "company_id")
     def get_anaf_filename(self):
         self.name = "{} - {}.{}".format(
@@ -95,19 +136,7 @@ class AnafMixin(models.AbstractModel):
     def get_report(self):
         model = self.version_id.model
         validator = self.version_id.validator
-        declaration = self.env[model.model].create(
-            {
-                "company_id": self.company_id.id,
-                "bank_account_id": self.bank_account_id.id,
-                "signature_id": self.signature_id.id,
-                "date_from": self.date_from,
-                "date_to": self.date_to,
-            }
-        )
-        xmlfile = declaration.build_file().encode("utf-8")
-        parser = etree.XMLParser(ns_clean=True, recover=True, encoding="utf-8")
-        h = etree.fromstring(xmlfile, parser=parser)
-        print(xmlfile)
+        xmldict = self.env[model.model].build_file()
         if validator:
-            xml_utils._check_with_xsd(h, validator)
-        self.file = b64encode(xmlfile)
+            self.validate_report(validator, xmldict)
+        self.file = b64encode(xmldict)
