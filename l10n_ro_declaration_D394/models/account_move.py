@@ -5,7 +5,7 @@
 
 import re
 
-from openerp import api, fields, models
+from odoo import api, fields, models
 
 OPERATION_TYPE = [
     ("L", "Customer Invoice"),
@@ -19,14 +19,14 @@ OPERATION_TYPE = [
 ]
 
 
-class AccountInvoice(models.Model):
-    _inherit = "account.invoice"
+class AccountMove(models.Model):
+    _inherit = "account.move"
 
     def _get_inv_number(self):
         regex1 = re.compile("[^0-9]")
         for inv in self:
             if (
-                inv.type
+                inv.move_type
                 in (
                     "out_invoice",
                     "out_refund",
@@ -51,7 +51,7 @@ class AccountInvoice(models.Model):
                     )
         return True
 
-    @api.multi
+
     def _get_operation_type(self):
         for inv in self:
             partner = inv.partner_id

@@ -13,9 +13,7 @@ class Declaratie394(models.AbstractModel):
     _description = "declaratie394"
 
     D39430_luna = fields.Integer(string="luna", xsd_required=True, xsd_type="integer")
-    D39430_an = fields.Many2one(
-        "D394.30.intint2016_2100stype", string="an", xsd_required=True
-    )
+    D39430_an = fields.Integer(string="an", xsd_required=True, xsd_type="integer")
     D39430_tip_D394 = fields.Many2one(
         "D394.30.str_listatipd394stype", string="tip_D394", xsd_required=True
     )
@@ -95,11 +93,65 @@ class Declaratie394(models.AbstractModel):
         "D394.30.op2", "D39430_op2_Declaratie394_id", string="op2"
     )
 
+    def build_file(self):
+        year, month = self.get_year_month()
+        data_file = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <declaratie394 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="mfp:anaf:dgti:d394:declaratie:v3 D394.xsd"
+        xmlns="mfp:anaf:dgti:d394:declaratie:v3" """
+
+        xmldict = {
+            "D39430_luna": month,
+            "D39430_an": year,
+            "D39430_sistemTVA": self.company_id.partner_id.vat_on_payment,
+            "D39430_op_efectuate" : 1,
+            "D39430_cui": self.company_id.partner_id.vat_number,
+            "D39430_caen": self.company_id.caen_code,
+            "D39430_den": self.company_id.name,
+            "D39430_adresa": self.company_id.partner_id._display_address(without_company=False).replace("\n", ","),
+            "D39430_telefon": self.company_id.phone,
+            "D39430_fax": self.company_id.fax,
+            "D39430_mail": self.company_id.email,
+            "D39430_totalPlata_A": 0,
+            "D39430_tip_intocmit" : 1,
+            "D39430_den_intocmit":self.user.partner_id.commercial_partner_id,
+            "DD39430_cif_intocmit" : self.user.partner_id.commercial_partner_id.vat_number}
+
+        if self.user.partner_id.comercial_partener_id:
+            xmldict.update({"D39430_calitate_intocmit" : self.user.partner_id.functie})
+        else:
+            xmldict.update({"D39430_functie_intocmit " : self.user.partner_id.vat and self.user.partner_id.vat[2:] or ''})
+
+        xmldict.update({"D39430_optiune":1,
+                        "D39430_schimb_optiune":1,
+                        "D39430_prsAfiliat":1})
+
+        xmldict.update({'D39430_informatii': [],
+                        'D39430_rezumat1': [],
+                        'D39430_rezumat2': [],
+                        'D39430_serieFacturi': [],
+                        'D39430_lista': [],
+                        'D39430_facturi': [],
+                        'D39430_op1': [],
+                        'D39430_op2': []})
+
+
+
+
+        company_data = self.generate_company_data()
+        xmldict.update(company_data)
+        sign = self.generate_sign()
+        xmldict.update(sign)
+        vat_report = self.generate_data()
+        xmldict.update(vat_report)
+
+
 
 class Detaliu(models.AbstractModel):
     _description = "detaliu"
     _name = "D394.30.detaliu"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "DetaliuType"
     _concrete_rec_name = "D39430_bun"
 
@@ -116,10 +168,12 @@ class Detaliu(models.AbstractModel):
     D39430_valN = fields.Integer(string="valN", xsd_type="integer")
 
 
+
+
 class Facturi(models.AbstractModel):
     _description = "facturi"
     _name = "D394.30.facturi"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "FacturiType"
     _concrete_rec_name = "D39430_tip_factura"
 
@@ -140,11 +194,105 @@ class Facturi(models.AbstractModel):
     D39430_tva20 = fields.Integer(string="tva20", xsd_type="integer")
     D39430_tva24 = fields.Integer(string="tva24", xsd_type="integer")
 
+    def generate_facturi(self):
+        obj_inv_line = self.env['account.invoice.line']
+        obj_invoice = self.env['account.invoice']
+        obj_period = self.env['account.period']
+        comp_currency = self.company_id.currency_id
+        facturi = []
+        invoices1 = obj_invoice.search([
+            ('fiscal_receipt', '=', False),
+            ('state', '!=', 'draft'),
+            ('period_id', '=', self.period_id.id),
+            ('date_invoice', '>=', self.date_from),
+            ('date_invoice', '<=', self.date_to),
+            '|',
+            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.company_id.child_ids.ids)
+        ])
+        invoices = invoices1.filtered(
+            lambda r:
+            r.amount_total < 0 or r.state == 'cancel' or
+            r.journal_id.sequence_type in ('autoinv1', 'autoinv2'))
+        for inv in invoices:
+            baza24 = baza20 = baza19 = baza9 = baza5 = 0
+            tva24 = tva20 = tva19 = tva9 = tva5 = 0
+            inv_curr = inv.currency_id
+            inv_date = inv.date_invoice
+            inv_type = False
+            if inv.type in ('out_invoice', 'out_refund'):
+                if inv.state == 'cancel':
+                    inv_type = 2
+                elif inv.amount_total < 0:
+                    inv_type = 1
+                elif inv.journal_id.sequence_type == 'autoinv1':
+                    inv_type = 3
+            elif inv.journal_id.sequence_type == 'autoinv2':
+                inv_type = 4
+            if inv_type:
+                for line in inv.invoice_line:
+                    cotas = [tax for tax in line.invoice_line_tax_id]
+                    for cota in cotas:
+                        cota_amount = 0
+                        if cota.type == 'percent':
+                            if cota.child_ids:
+                                cota_amount = int(
+                                    abs(cota.child_ids[0].amount) * 100)
+                            else:
+                                cota_amount = int(cota.amount * 100)
+                        elif cota.type == 'amount':
+                            cota_amount = int(cota.amount)
+                        if cota_amount in (5, 9, 19, 20, 24):
+                            new_base = inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_subtotal, comp_currency)
+                            new_taxes = inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_normal_taxes and
+                                line.price_normal_taxes or
+                                line.price_taxes, comp_currency)
+                            if cota_amount == 24:
+                                baza24 += new_base
+                                tva24 += new_taxes
+                            elif cota_amount == 20:
+                                baza20 += new_base
+                                tva20 += new_taxes
+                            elif cota_amount == 19:
+                                baza19 += new_base
+                                tva19 += new_taxes
+                            elif cota_amount == 9:
+                                baza9 += new_base
+                                tva9 += new_taxes
+                            elif cota_amount == 5:
+                                baza5 += new_base
+                                tva5 += new_taxes
+                new_dict = {
+                    'tip_factura': inv_type,
+                    'serie': inv.inv_serie,
+                    'nr': inv.inv_number,
+                }
+                if inv_type == 3:
+                    new_dict.update({
+                        'baza24': int(round(baza24)),
+                        'baza20': int(round(baza20)),
+                        'baza19': int(round(baza19)),
+                        'baza9': int(round(baza9)),
+                        'baza5': int(round(baza5)),
+                        'tva5': int(round(tva20)),
+                        'tva9': int(round(tva9)),
+                        'tva19': int(round(tva19)),
+                        'tva20': int(round(tva20)),
+                        'tva24': int(round(tva24))
+                    })
+                facturi.append(new_dict)
+        return facturi
+        pass
+
 
 class Informatii(models.AbstractModel):
     _description = "informatii"
     _name = "D394.30.informatii"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "InformatiiType"
     _concrete_rec_name = "D39430_nrCui1"
 
@@ -260,11 +408,14 @@ class Informatii(models.AbstractModel):
     D39430_livINecorp = fields.Integer(string="livINecorp", xsd_type="integer")
     D39430_efectuat = fields.Integer(string="efectuat", xsd_type="integer")
 
+    def generate_informatii(self):
+        pass
+
 
 class Lista(models.AbstractModel):
     _description = "lista"
     _name = "D394.30.lista"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "ListaType"
     _concrete_rec_name = "D39430_caen"
 
@@ -284,10 +435,12 @@ class Lista(models.AbstractModel):
     D39430_tva = fields.Integer(string="tva", xsd_required=True, xsd_type="integer")
 
 
+
+
 class Op11(models.AbstractModel):
     _description = "op11"
     _name = "D394.30.op11"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "Op11Type"
     _concrete_rec_name = "D39430_nrFactPR"
 
@@ -307,7 +460,7 @@ class Op11(models.AbstractModel):
 class Op1(models.AbstractModel):
     _description = "op1"
     _name = "D394.30.op1"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "Op1Type"
     _concrete_rec_name = "D39430_tip"
 
@@ -345,7 +498,7 @@ class Op1(models.AbstractModel):
 class Op2(models.AbstractModel):
     _description = "op2"
     _name = "D394.30.op2"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "Op2Type"
     _concrete_rec_name = "D39430_tip_op2"
 
@@ -388,7 +541,7 @@ class Op2(models.AbstractModel):
 class Rezumat1(models.AbstractModel):
     _description = "rezumat1"
     _name = "D394.30.rezumat1"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "Rezumat1Type"
     _concrete_rec_name = "D39430_tip_partener"
 
@@ -428,7 +581,7 @@ class Rezumat1(models.AbstractModel):
 class Rezumat2(models.AbstractModel):
     _description = "rezumat2"
     _name = "D394.30.rezumat2"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "Rezumat2Type"
     _concrete_rec_name = "D39430_cota"
 
@@ -504,7 +657,7 @@ class Rezumat2(models.AbstractModel):
 class SerieFacturi(models.AbstractModel):
     _description = "seriefacturi"
     _name = "D394.30.seriefacturi"
-    _inherit = "spec.mixin.D394"
+    _inherit = "anaf.mixin"
     _generateds_type = "SerieFacturiType"
     _concrete_rec_name = "D39430_tip"
 
