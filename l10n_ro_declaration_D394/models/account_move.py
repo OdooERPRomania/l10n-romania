@@ -17,6 +17,10 @@ OPERATION_TYPE = [
     ("C", "Inverse Taxation Supplier Invoice"),
     ("N", "Fizical Persons Supplier Invoice"),
 ]
+SEQUENCE_TYPE = [
+     ("normal", "Invoice"),
+     ("autoinv1", "Customer Auto Invoicing"),
+     ("autoinv2", "Supplier  Auto Invoicing"),]
 
 
 class AccountMove(models.Model):
@@ -31,7 +35,7 @@ class AccountMove(models.Model):
                     "out_invoice",
                     "out_refund",
                 )
-                or inv.journal_id.sequence_type in ("autoinv1", "autoinv2")
+                or inv.sequence_type in ("autoinv1", "autoinv2")
             ):
                 inv.inv_number = int(
                     regex1.sub(
@@ -105,7 +109,7 @@ class AccountMove(models.Model):
         return True
 
     sequence_type = fields.Selection(
-        related="journal_id.sequence_type", string="Sequence Type"
+        SEQUENCE_TYPE, string="Sequence Type"
     )
     operation_type = fields.Selection(
         OPERATION_TYPE,
