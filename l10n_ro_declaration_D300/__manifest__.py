@@ -16,5 +16,6 @@
     "depends": ["l10n_ro_declaration"],
     "data": [
         "security/ir.model.access.csv",
+        "wizard/run_declaration_view.xml"
     ],
 }

@@ -92,6 +92,42 @@ class AnafMixin(models.AbstractModel):
             self.declaration_id.name, self.company_id.vat, "xml"
         )
 
+    @api.model
+    def get_period_invoices(self, types):
+        invoices = self.env['account.move'].search([
+            ('state', '=', 'posted'),
+            ('move_type', 'in', types),
+            ('invoice_date', '>=', self.date_from),
+            ('invoice_date', '<=', self.date_to),
+            ('company_id', '=', self.company_id.id)
+        ])
+        return invoices
+
+    @api.model
+    def get_period_vatp_invoices(self, types):
+        fp = self.company_id.property_vat_on_payment_position_id
+        invoices = self.env['account.move']
+        if fp:
+            vatp_invoices = self.env['account.move'].search([
+                ('state', 'in', ['posted', 'cancel']),
+                ('move_type', 'in', types),
+                ('invoice_date', '>', self.company_id.account_opening_date),
+                ('invoice_date', '<=', self.date_to),
+                ('company_id', '=', self.company_id.id),
+                ('fiscal_position_id', '=', fp.id)
+            ])
+            for inv in vatp_invoices:
+                if inv.payment_state not in ['paid',
+                                             'reversed',
+                                             'invoicing_legacy']:
+                    invoices |= inv
+                elif inv.payment_state == 'paid':
+                    for payment in self._get_reconciled_invoices_partials():
+                        if payment.date >= self.date_from and \
+                                payment.date <= self.date_to:
+                            invoices |= inv
+        return invoices
+
     def get_report(self):
         model = self.version_id.model
         validator = self.version_id.validator
@@ -108,6 +144,7 @@ class AnafMixin(models.AbstractModel):
         parser = etree.XMLParser(ns_clean=True, recover=True, encoding="utf-8")
         h = etree.fromstring(xmlfile, parser=parser)
         print(xmlfile)
+        print(h)
         if validator:
             xml_utils._check_with_xsd(h, validator)
         self.file = b64encode(xmlfile)
