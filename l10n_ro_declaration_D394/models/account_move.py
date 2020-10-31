@@ -5,7 +5,7 @@
 
 import re
 
-from openerp import api, fields, models
+from odoo import api, fields, models
 
 OPERATION_TYPE = [
     ("L", "Customer Invoice"),
@@ -17,21 +17,25 @@ OPERATION_TYPE = [
     ("C", "Inverse Taxation Supplier Invoice"),
     ("N", "Fizical Persons Supplier Invoice"),
 ]
+SEQUENCE_TYPE = [
+     ("normal", "Invoice"),
+     ("autoinv1", "Customer Auto Invoicing"),
+     ("autoinv2", "Supplier  Auto Invoicing"),]
 
 
-class AccountInvoice(models.Model):
-    _inherit = "account.invoice"
+class AccountMove(models.Model):
+    _inherit = "account.move"
 
     def _get_inv_number(self):
         regex1 = re.compile("[^0-9]")
         for inv in self:
             if (
-                inv.type
+                inv.move_type
                 in (
                     "out_invoice",
                     "out_refund",
                 )
-                or inv.journal_id.sequence_type in ("autoinv1", "autoinv2")
+                or inv.sequence_type in ("autoinv1", "autoinv2")
             ):
                 inv.inv_number = int(
                     regex1.sub(
@@ -51,7 +55,7 @@ class AccountInvoice(models.Model):
                     )
         return True
 
-    @api.multi
+
     def _get_operation_type(self):
         for inv in self:
             partner = inv.partner_id
@@ -105,7 +109,7 @@ class AccountInvoice(models.Model):
         return True
 
     sequence_type = fields.Selection(
-        related="journal_id.sequence_type", string="Sequence Type"
+        SEQUENCE_TYPE, string="Sequence Type"
     )
     operation_type = fields.Selection(
         OPERATION_TYPE,

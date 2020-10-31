@@ -4,14 +4,14 @@
 {
     "name": "Romania - ANAF Declarations",
     "summary": "Romania - ANAF Declaration",
-    "version": "13.0.1.0.0",
+    "version": "14.0.1.0.0",
     "development_status": "Mature",
     "category": "Localization",
     "website": "https://github.com/OCA/l10n-romania",
     "author": "NextERP Romania," "Terrabit," "Odoo Community Association (OCA)",
     "maintainers": ["feketemihai", "dhongu"],
     "license": "AGPL-3",
-    "application": False,
+    "application": True,
     "installable": True,
     "external_dependencies": {
         "python": [

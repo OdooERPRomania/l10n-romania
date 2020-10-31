@@ -1,7 +1,7 @@
-# ©  2016 Forest and Biomass Romania
+# ©  2020 Forest and Biomass Romania
 # See README.rst file on addons root folder for license details
 
-from openerp import fields, models
+from odoo import fields, models
 
 SEQUENCE_TYPE = [
     ("normal", "Invoice"),
