@@ -22,8 +22,8 @@
     },
     "depends": ["date_range", "l10n_ro_vat_on_payment"],
     "data": [
-        "views/anaf_declaration_view.xml",
-        "views/anaf_signature_view.xml",
-        "security/ir.model.access.csv",
+       # "views/anaf_declaration_view.xml",
+       # "views/anaf_signature_view.xml",
+      #"security/ir.model.access.csv",
     ],
 }

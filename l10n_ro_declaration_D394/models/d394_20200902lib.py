@@ -41,30 +41,30 @@ class Declaratie394(models.AbstractModel):
     schimb_optiune = fields.Integer( string="schimb_optiune",xsd_required=True, xsd_type="integer")
     prsAfiliat = fields.Char(string="prsAfiliat", xsd_required=True, xsd_type="string")
     informatii = fields.Many2one(
-        "D394.30.informatii", string="informatii", xsd_required=True
+        "informatii", string="informatii", xsd_required=True
     )
     rezumat1 = fields.One2many(
-        "D394.30.rezumat1", "rezumat1_Declaratie394_id", string="rezumat1"
+        "d394.30.rezumat1", "rezumat1_Declaratie394_id", string="rezumat1"
     )
     rezumat2 = fields.One2many(
-        "D394.30.rezumat2", "rezumat2_Declaratie394_id", string="rezumat2"
+        "d394.30.rezumat2", "rezumat2_Declaratie394_id", string="rezumat2"
     )
     serieFacturi = fields.One2many(
-        "D394.30.seriefacturi",
+        "d394.30.seriefacturi",
         "serieFacturi_Declaratie394_id",
         string="serieFacturi",
     )
     lista = fields.One2many(
-        "D394.30.lista", "lista_Declaratie394_id", string="lista"
+        "lista", "lista_Declaratie394_id", string="lista"
     )
     facturi = fields.One2many(
-        "D394.30.facturi", "facturi_Declaratie394_id", string="facturi"
+        "facturi", "facturi_Declaratie394_id", string="facturi"
     )
     op1 = fields.One2many(
-        "D394.30.op1", "op1_Declaratie394_id", string="op1"
+        "d394.30.op1", "op1_Declaratie394_id", string="op1"
     )
     op2 = fields.One2many(
-        "D394.30.op2", "op2_Declaratie394_id", string="op2"
+        "d394.30.op2", "op2_Declaratie394_id", string="op2"
     )
     def generate_facturi(self):
         year, mounth = self.get_year_month()
@@ -87,13 +87,13 @@ class Declaratie394(models.AbstractModel):
             r.amount_total < 0 or r.state == 'cancel' or
             r.sequence_type in ('autoinv1', 'autoinv2'))
         for inv in invoices:
-            factura = Facturi()
-            factura.baza24 = factura.baza20 = factura.baza19 = factura.baza9 = factura.baza5 = 0
-            factura.tva24 = factura.tva20 = factura.tva19 = factura.tva9 = factura.tva5 = 0
+
+            baza24 = baza20 = baza19 = baza9 = baza5 = 0
+            tva24 = tva20 = tva19 = tva9 = tva5 = 0
             inv_curr = inv.currency_id
             inv_date = inv.invoice_date
             inv_type = False
-            if inv.type in ('out_invoice', 'out_refund'):
+            if inv.move_type in ('out_invoice', 'out_refund'):
                 if inv.state == 'cancel':
                     inv_type = 2
                 elif inv.amount_total < 0:
@@ -118,20 +118,20 @@ class Declaratie394(models.AbstractModel):
                                 line.price_normal_taxes or
                                 line.price_taxes, comp_currency)
                             if cota_amount == 24:
-                                factura.baza24 += new_base
-                                factura.tva24 += new_taxes
+                                baza24 += new_base
+                                tva24 += new_taxes
                             elif cota_amount == 20:
-                                factura.baza20 += new_base
-                                factura.tva20 += new_taxes
+                                baza20 += new_base
+                                tva20 += new_taxes
                             elif cota_amount == 19:
-                                factura.baza19 += new_base
-                                factura.tva19 += new_taxes
+                                baza19 += new_base
+                                tva19 += new_taxes
                             elif cota_amount == 9:
-                                factura.baza9 += new_base
-                                factura.tva9 += new_taxes
+                                baza9 += new_base
+                                tva9 += new_taxes
                             elif cota_amount == 5:
-                                factura.baza5 += new_base
-                                factura.tva5 += new_taxes
+                                baza5 += new_base
+                                tva5 += new_taxes
                 new_dict = {
                     'tip_factura': inv_type,
                     'serie': inv.inv_serie,
@@ -139,17 +139,18 @@ class Declaratie394(models.AbstractModel):
                 }
                 if inv_type == 3:
                     new_dict.update({
-                        'baza24': int(round(factura.baza24)),
-                        'baza20': int(round(factura.baza20)),
-                        'baza19': int(round(factura.baza19)),
-                        'baza9': int(round(factura.baza9)),
-                        'baza5': int(round(factura.baza5)),
-                        'tva5': int(round(factura.tva20)),
-                        'tva9': int(round(factura.tva9)),
-                        'tva19': int(round(factura.tva19)),
-                        'tva20': int(round(factura.tva20)),
-                        'tva24': int(round(factura.tva24))
+                        'baza24': int(round(baza24)),
+                        'baza20': int(round(baza20)),
+                        'baza19': int(round(baza19)),
+                        'baza9': int(round(baza9)),
+                        'baza5': int(round(baza5)),
+                        'tva5': int(round(tva20)),
+                        'tva9': int(round(tva9)),
+                        'tva19': int(round(tva19)),
+                        'tva20': int(round(tva20)),
+                        'tva24': int(round(tva24))
                     })
+                    factura = self.env['facturi'].create(new_dict)
                 facturi.append(new_dict)
         return facturi
 
@@ -226,14 +227,14 @@ class Declaratie394(models.AbstractModel):
                         part_invoices = cota_inv.filtered(
                             lambda r: r.partner_id.id == partner.id)
                         cota_amount = 0
-                        # if cota.type == 'percent':
-                        #     if cota.child_ids:
-                        #         cota_amount = int(
-                        #             abs(cota.child_ids[0].amount) * 100)
-                        #     else:
-                        #         cota_amount = int(cota.amount * 100)
-                        # elif cota.type == 'amount':
-                        cota_amount = int(cota.amount)
+                        if cota.amount_type == 'percent':
+                            if cota.child_ids:
+                                cota_amount = int(
+                                    abs(cota.child_ids[0].amount) * 100)
+                            else:
+                                cota_amount = int(cota.amount * 100)
+                        elif cota.amount_type == 'amount':
+                            cota_amount = int(cota.amount)
                         if new_oper_type == 'A' and \
                             'Ti-ach' in cota.description:
                             new_oper_type = 'C'
@@ -315,10 +316,10 @@ class Declaratie394(models.AbstractModel):
                                     fp = inv_line.invoice_id.fiscal_position_id
                                     tax = inv_line.product_id.supplier_taxes_id
                                     inv = inv_line.invoice_id
-                                    if not fp or (
-                                        ('National' in fp.name) or
-                                        ('Invers' in fp.name) or
-                                        (('Scutit' in
+                                    if not fp or  (
+                                        ('Regim National' in fp.name) or
+                                        ('Regim Taxare Inversa' in fp.name) or
+                                        (('Regim Intra-Comunitar Scutit' in
                                           inv.fiscal_position_id.name) and
                                          inv.partner_type in ('1', '2'))):
                                         tax = inv_line.invoice_line_tax_id
@@ -335,15 +336,15 @@ class Declaratie394(models.AbstractModel):
                                                 inv_line.id)
                                 inv_lines = obj_inv_line.browse(
                                     filtered_inv_lines)
-                                baza = 0
-                                taxes = 0
+                                op1.baza = 0
+                                op1.taxes = 0
                                 for line in inv_lines:
                                     inv_curr = line.invoice_id.currency_id
                                     inv_date = line.invoice_id.date_invoice
-                                    baza += inv_curr.with_context(
+                                    op1.baza += inv_curr.with_context(
                                         {'date': inv_date}).compute(
                                         line.price_subtotal, comp_curr)
-                                    taxes += inv_curr.with_context(
+                                    op1.taxes += inv_curr.with_context(
                                         {'date': inv_date}).compute(
                                         line.price_normal_taxes and
                                         line.price_normal_taxes or
@@ -406,21 +407,21 @@ class Declaratie394(models.AbstractModel):
                             inv_lines = obj_inv_line.search(domain)
                             filtered_inv_lines = []
                             for inv_line in inv_lines:
-                                fp = inv_line.invoice_id.fiscal_position
+                                fp = inv_line.invoice_id.fiscal_position_id
                                 tax = inv_line.product_id.supplier_taxes_id
                                 inv = inv_line.invoice_id
                                 if not fp or (
                                     ('National' in fp.name) or
                                     ('Invers' in fp.name) or
                                     (('Scutit' in
-                                      inv.fiscal_position.name) and
+                                      inv.fiscal_position_id.name) and
                                      inv.partner_type == '2')):
                                     tax = inv_line.invoice_line_tax_id
                                     if cota.id in tax.ids:
                                         filtered_inv_lines.append(
                                             inv_line.id)
                                 elif not fp or ('Scutit' not in
-                                                inv.fiscal_position.name):
+                                                inv.fiscal_position_id.name):
                                     inv_type = inv_line.invoice_id.type
                                     if inv_type in ('out_invoice',
                                                     'out_refund'):
@@ -603,21 +604,21 @@ class Declaratie394(models.AbstractModel):
 
 class Detaliu(models.AbstractModel):
     _description = "detaliu"
-    _name = "D394.30.detaliu"
-    _inherit = "anaf.mixin"
+    _name = "detaliu"
+    #_inherit = "anaf.mixin"
     _generateds_type = "DetaliuType"
     _concrete_rec_name = "bun"
 
-    detaliu_Rezumat1_id = fields.Many2one("D394.30.rezumat1")
+    detaliu_Rezumat1_id = fields.Many2one("d394.30.rezumat1")
     bun = fields.Many2one(
         "D394.30.int_nomenclatorbunuristype", string="bun", xsd_required=True
     )
-    nrLivV = fields.Many2one("D394.30.intpoz15stype", string="nrLivV")
+    nrLivV = fields.Integer( string="nrLivV",xsd_type="integer",)
     bazaLivV = fields.Integer(string="bazaLivV", xsd_type="integer")
-    nrAchizC = fields.Many2one("D394.30.intpoz15stype", string="nrAchizC")
+    nrAchizC = fields.Integer( string="nrAchizC",  xsd_type="integer")
     bazaAchizC = fields.Integer(string="bazaAchizC", xsd_type="integer")
     tvaAchizC = fields.Integer(string="tvaAchizC", xsd_type="integer")
-    nrN = fields.Many2one("D394.30.intpoz15stype", string="nrN")
+    nrN = fields.Integer(xsd_type="integer", string="nrN")
     valN = fields.Integer(string="valN", xsd_type="integer")
 
 
@@ -625,7 +626,7 @@ class Detaliu(models.AbstractModel):
 
 class Facturi(models.AbstractModel):
     _description = "facturi"
-    _name = "D394.30.facturi"
+    _name = "facturi"
     _inherit = "anaf.mixin"
     _generateds_type = "FacturiType"
     _concrete_rec_name = "tip_factura"
@@ -651,7 +652,7 @@ class Facturi(models.AbstractModel):
 
 class Informatii(models.AbstractModel):
     _description = "informatii"
-    _name = "D394.30.informatii"
+    _name = "informatii"
     _inherit = "anaf.mixin"
     _generateds_type = "InformatiiType"
     _concrete_rec_name = "nrCui1"
@@ -677,21 +678,11 @@ class Informatii(models.AbstractModel):
     incasari_i2 = fields.Integer(
         string="incasari_i2", xsd_required=True, xsd_type="integer"
     )
-    nrFacturi_terti = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturi_terti", xsd_required=True
-    )
-    nrFacturi_benef = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturi_benef", xsd_required=True
-    )
-    nrFacturi = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturi", xsd_required=True
-    )
-    nrFacturiL_PF = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturiL_PF", xsd_required=True
-    )
-    nrFacturiLS_PF = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturiLS_PF", xsd_required=True
-    )
+    nrFacturi_terti = fields.Integer( string="nrFacturi_terti", xsd_required=True,xsd_type="integer")
+    nrFacturi_benef = fields.Integer( string="nrFacturi_benef", xsd_required=True, xsd_type="integer")
+    nrFacturi = fields.Integer( string="nrFacturi", xsd_required=True, xsd_type="integer")
+    nrFacturiL_PF = fields.Integer( string="nrFacturiL_PF", xsd_required=True,xsd_type="integer")
+    nrFacturiLS_PF = fields.Integer( string="nrFacturiLS_PF", xsd_required=True, xsd_type="integer")
     val_LS_PF = fields.Integer(
         string="val_LS_PF", xsd_required=True, xsd_type="integer"
     )
@@ -728,9 +719,7 @@ class Informatii(models.AbstractModel):
     pret_cumparare = fields.Integer(string="pret_cumparare", xsd_type="integer")
     marja_antic = fields.Integer(string="marja_antic", xsd_type="integer")
     tva_antic = fields.Integer(string="tva_antic", xsd_type="integer")
-    solicit = fields.Integer(
-        string="solicit", xsd_required=True, xsd_type="integer"
-    )
+    solicit = fields.Integer(string="solicit", xsd_required=True, xsd_type="integer")
     achizitiiPE = fields.Integer(string="achizitiiPE", xsd_type="integer")
     achizitiiCR = fields.Integer(string="achizitiiCR", xsd_type="integer")
     achizitiiCB = fields.Integer(string="achizitiiCB", xsd_type="integer")
@@ -768,30 +757,22 @@ class Informatii(models.AbstractModel):
     livINecorp = fields.Integer(string="livINecorp", xsd_type="integer")
     efectuat = fields.Integer(string="efectuat", xsd_type="integer")
 
-    def generate_informatii(self):
-        pass
+
 
 
 class Lista(models.AbstractModel):
     _description = "lista"
-    _name = "D394.30.lista"
+    _name = "lista"
     _inherit = "anaf.mixin"
     _generateds_type = "ListaType"
     _concrete_rec_name = "caen"
 
     lista_Declaratie394_id = fields.Many2one("D394.30.declaratie394")
-    caen = fields.Many2one(
-        "D394.30.int_listacaenstype", string="caen", xsd_required=True
-    )
-    cota = fields.Many2one(
-        "D394.30.int_cotetva2stype", string="cota", xsd_required=True
-    )
-    operat = fields.Many2one(
-        "D394.30.intint1_2stype", string="operat", xsd_required=True
-    )
-    valoare = fields.Integer(
-        string="valoare", xsd_required=True, xsd_type="integer"
-    )
+    caen = fields.Integer(
+        "D394.30.int_listacaenstype", string="caen", xsd_required=True, xsd_type="integer")
+    cota = fields.Integer( string="cota", xsd_required=True, xsd_type="integer"  )
+    operat = fields.Integer(string="operat", xsd_required=True, xsd_type="integer")
+    valoare = fields.Integer(string="valoare", xsd_required=True, xsd_type="integer")
     tva = fields.Integer(string="tva", xsd_required=True, xsd_type="integer")
 
 
@@ -799,34 +780,28 @@ class Lista(models.AbstractModel):
 
 class Op11(models.AbstractModel):
     _description = "op11"
-    _name = "D394.30.op11"
+    _name = "d394.30.op11"
     _inherit = "anaf.mixin"
     _generateds_type = "Op11Type"
     _concrete_rec_name = "nrFactPR"
 
-    op11_Op1_id = fields.Many2one("D394.30.op1")
-    nrFactPR = fields.Integer(
-         string="nrFactPR", xsd_required=True, xsd_type="integer")
-    codPR = fields.Many2one(
-        "D394.30.str_listacodprstype", string="codPR", xsd_required=True
-    )
-    bazaPR = fields.Integer(
-        string="bazaPR", xsd_required=True, xsd_type="integer"
-    )
+    op11_Op1_id = fields.Many2one("d394.30.op1")
+    nrFactPR = fields.Integer(string="nrFactPR", xsd_required=True, xsd_type="integer")
+    codPR = fields.Char( string="codPR", xsd_required=True, xsd_type="string")
+    bazaPR = fields.Integer(string="bazaPR", xsd_required=True, xsd_type="integer")
     tvaPR = fields.Integer(string="tvaPR", xsd_type="integer")
 
 
 class Op1(models.AbstractModel):
     _description = "op1"
-    _name = "D394.30.op1"
+    _name = "d394.30.op1"
     _inherit = "anaf.mixin"
     _generateds_type = "Op1Type"
     _concrete_rec_name = "tip"
 
     op1_Declaratie394_id = fields.Many2one("D394.30.declaratie394")
-    tip = fields.String(string="tip", xsd_required=True, xsd_type="string")
-    tip_partener = fields.Integer(
-        "D394.30.int_tippartenerop1stype", string="tip_partener", xsd_required=True, xsd_type="integer")
+    tip = fields.Char(string="tip", xsd_required=True, xsd_type="string")
+    tip_partener = fields.Integer(string="tip_partener", xsd_required=True, xsd_type="integer")
     cota = fields.Integer(string="cota", xsd_required=True, xsd_type="integer")
     cuiP = fields.Char(string="cuiP", xsd_type="string")
     denP = fields.Char(string="denP", xsd_required=True, xsd_type="string")
@@ -842,12 +817,12 @@ class Op1(models.AbstractModel):
     nrFact = fields.Integer(xsd_required=True, xsd_type="string", string="nrFact")
     baza = fields.Integer(string="baza", xsd_required=True, xsd_type="integer")
     tva = fields.Integer(string="tva", xsd_type="integer")
-    op11 = fields.One2many("D394.30.op11", "op11_Op1_id", string="op11")
+    op11 = fields.One2many("d394.30.op11", "op11_Op1_id", string="op11")
 
 
 class Op2(models.AbstractModel):
     _description = "op2"
-    _name = "D394.30.op2"
+    _name = "d394.30.op2"
     _inherit = "anaf.mixin"
     _generateds_type = "Op2Type"
     _concrete_rec_name = "tip_op2"
@@ -857,40 +832,22 @@ class Op2(models.AbstractModel):
         "D394.30.str_tipoperatiestype", string="tip_op2", xsd_required=True
     )
     luna = fields.Integer(string="luna", xsd_required=True, xsd_type="integer")
-    nrAMEF = fields.Many2one("D394.30.intpoz4stype", string="nrAMEF")
-    nrBF = fields.Many2one("D394.30.intpoz15stype", string="nrBF")
-    total = fields.Many2one(
-        "D394.30.intpoz15stype", string="total", xsd_required=True
-    )
-    baza20 = fields.Many2one(
-        "D394.30.intpoz15stype", string="baza20", xsd_required=True
-    )
-    baza9 = fields.Many2one(
-        "D394.30.intpoz15stype", string="baza9", xsd_required=True
-    )
-    baza5 = fields.Many2one(
-        "D394.30.intpoz15stype", string="baza5", xsd_required=True
-    )
-    TVA20 = fields.Many2one(
-        "D394.30.intpoz15stype", string="TVA20", xsd_required=True
-    )
-    TVA9 = fields.Many2one(
-        "D394.30.intpoz15stype", string="TVA9", xsd_required=True
-    )
-    TVA5 = fields.Many2one(
-        "D394.30.intpoz15stype", string="TVA5", xsd_required=True
-    )
-    baza19 = fields.Many2one(
-        "D394.30.intpoz15stype", string="baza19", xsd_required=True
-    )
-    TVA19 = fields.Many2one(
-        "D394.30.intpoz15stype", string="TVA19", xsd_required=True
-    )
+    nrAMEF = fields.Integer("D394.30.intpoz4stype", string="nrAMEF")
+    nrBF = fields.Integer("D394.30.intpoz15stype", string="nrBF")
+    total = fields.Integer( string="total", xsd_required=True, xsd_type="integer")
+    baza20 = fields.Integer( string="baza20", xsd_required=True, xsd_type="integer")
+    baza9 = fields.Integer( string="baza9", xsd_required=True, xsd_type="integer")
+    baza5 = fields.Integer( string="baza5", xsd_required=True, xsd_type="integer")
+    TVA20 = fields.Integer( string="TVA20", xsd_required=True, xsd_type="integer")
+    TVA9 = fields.Integer( string="TVA9", xsd_required=True, xsd_type="integer")
+    TVA5 = fields.Integer( string="TVA5", xsd_required=True, xsd_type="integer")
+    baza19 = fields.Integer( string="baza19", xsd_required=True, xsd_type="integer")
+    TVA19 = fields.Integer( string="TVA19", xsd_required=True, xsd_type="integer")
 
 
 class Rezumat1(models.AbstractModel):
     _description = "rezumat1"
-    _name = "D394.30.rezumat1"
+    _name = "d394.30.rezumat1"
     _inherit = "anaf.mixin"
     _generateds_type = "Rezumat1Type"
     _concrete_rec_name = "tip_partener"
@@ -899,38 +856,36 @@ class Rezumat1(models.AbstractModel):
     tip_partener = fields.Many2one(
         "D394.30.int_tippartenerstype", string="tip_partener", xsd_required=True
     )
-    cota = fields.Many2one(
-        "D394.30.int_cotetvastype", string="cota", xsd_required=True
-    )
-    facturiL = fields.Many2one("D394.30.intpoz15stype", string="facturiL")
+    cota = fields.Integer( string="cota", xsd_required=True)
+    facturiL = fields.Integer( string="facturiL",xsd_type="integer")
     bazaL = fields.Integer(string="bazaL", xsd_type="integer")
     tvaL = fields.Integer(string="tvaL", xsd_type="integer")
-    facturiLS = fields.Many2one("D394.30.intpoz15stype", string="facturiLS")
+    facturiLS = fields.Integer( string="facturiLS", xsd_type="integer")
     bazaLS = fields.Integer(string="bazaLS", xsd_type="integer")
-    facturiA = fields.Many2one("D394.30.intpoz15stype", string="facturiA")
+    facturiA = fields.Integer(string="facturiA",xsd_type="integer")
     bazaA = fields.Integer(string="bazaA", xsd_type="integer")
     tvaA = fields.Integer(string="tvaA", xsd_type="integer")
-    facturiAI = fields.Many2one("D394.30.intpoz15stype", string="facturiAI")
+    facturiAI = fields.Integer(string="facturiAI", xsd_type="integer")
     bazaAI = fields.Integer(string="bazaAI", xsd_type="integer")
     tvaAI = fields.Integer(string="tvaAI", xsd_type="integer")
-    facturiAS = fields.Many2one("D394.30.intpoz15stype", string="facturiAS")
+    facturiAS = fields.Integer( string="facturiAS",xsd_type="integer" )
     bazaAS = fields.Integer(string="bazaAS", xsd_type="integer")
-    facturiV = fields.Many2one("D394.30.intpoz15stype", string="facturiV")
+    facturiV = fields.Integer(xsd_type="integer", string="facturiV")
     bazaV = fields.Integer(string="bazaV", xsd_type="integer")
-    facturiC = fields.Many2one("D394.30.intpoz15stype", string="facturiC")
+    facturiC = fields.Integer( string="facturiC", xsd_type="integer")
     bazaC = fields.Integer(string="bazaC", xsd_type="integer")
     tvaC = fields.Integer(string="tvaC", xsd_type="integer")
-    facturiN = fields.Many2one("D394.30.intpoz15stype", string="facturiN")
-    document_N = fields.Many2one("D394.30.intint1_5stype", string="document_N")
+    facturiN = fields.Integer(string="facturiN", xsd_type="integer")
+    document_N = fields.Integer(string="document_N", xsd_type="integer")
     bazaN = fields.Integer(string="bazaN", xsd_type="integer")
     detaliu = fields.One2many(
-        "D394.30.detaliu", "detaliu_Rezumat1_id", string="detaliu"
+        "detaliu", "detaliu_Rezumat1_id", string="detaliu"
     )
 
 
 class Rezumat2(models.AbstractModel):
     _description = "rezumat2"
-    _name = "D394.30.rezumat2"
+    _name = "d394.30.rezumat2"
     _inherit = "anaf.mixin"
     _generateds_type = "Rezumat2Type"
     _concrete_rec_name = "cota"
@@ -967,19 +922,15 @@ class Rezumat2(models.AbstractModel):
     TVABFAI = fields.Integer(
         string="TVABFAI", xsd_required=True, xsd_type="integer"
     )
-    nrFacturiL = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturiL", xsd_required=True
-    )
+    nrFacturiL = fields.Integer(xsd_type="integer", string="nrFacturiL", xsd_required=True)
     bazaL = fields.Integer(string="bazaL", xsd_required=True, xsd_type="integer")
     tvaL = fields.Integer(string="tvaL", xsd_required=True, xsd_type="integer")
-    nrFacturiA = fields.Many2one(
+    nrFacturiA = fields.Integer(
         "D394.30.intpoz15stype", string="nrFacturiA", xsd_required=True
     )
     bazaA = fields.Integer(string="bazaA", xsd_required=True, xsd_type="integer")
     tvaA = fields.Integer(string="tvaA", xsd_required=True, xsd_type="integer")
-    nrFacturiAI = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrFacturiAI", xsd_required=True
-    )
+    nrFacturiAI = fields.Integer( string="nrFacturiAI", xsd_required=True)
     bazaAI = fields.Integer(
         string="bazaAI", xsd_required=True, xsd_type="integer"
     )
@@ -1006,7 +957,7 @@ class Rezumat2(models.AbstractModel):
 
 class SerieFacturi(models.AbstractModel):
     _description = "seriefacturi"
-    _name = "D394.30.seriefacturi"
+    _name = "d394.30.seriefacturi"
     _inherit = "anaf.mixin"
     _generateds_type = "SerieFacturiType"
     _concrete_rec_name = "tip"
@@ -1015,8 +966,8 @@ class SerieFacturi(models.AbstractModel):
     tip = fields.Many2one(
         "D394.30.intint1_4stype", string="tip", xsd_required=True
     )
-    serieI = fields.Many2one("D394.30.str20", string="serieI")
-    nrI = fields.Many2one("D394.30.str20", string="nrI", xsd_required=True)
-    nrF = fields.Many2one("D394.30.str20", string="nrF")
-    den = fields.Many2one("D394.30.str100", string="den")
+    serieI = fields.Char( string="serieI", xsd_type="string")
+    nrI = fields.Char( string="nrI", xsd_required=True)
+    nrF = fields.Char( string="nrF", xsd_type="string" )
+    den = fields.Char( string="den", xsd_type="string")
     cui = fields.Char(string="cui", xsd_type="token")
