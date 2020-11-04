@@ -537,6 +537,96 @@ class Declaratie394(models.AbstractModel):
         return op1
 
 
+    def _get_op2(self, invoices):
+        self.ensure_one()
+        if fields.Date.from_string(self.date_from) < \
+            fields.Date.from_string('2016-10-01'):
+            return []
+        obj_inv_line = self.env['account.move.line']
+
+        obj_period = self.env['account.period']
+        comp_curr = self.company_id.currency_id
+        op2 = []
+        oper_type = 'I1'
+        periods = set([invoice.period_id.id for invoice in invoices])
+        for period in obj_period.browse(periods):
+            period_inv = invoices.filtered(
+                lambda r: r.period_id.id == period.id)
+            nrAMEF = \
+                len(set([invoice.journal_id.id for invoice in period_inv]))
+            nrBF = len(period_inv)
+            total = 0
+            baza20 = baza19 = baza9 = baza5 = 0
+            tva20 = tva19 = tva9 = tva5 = 0
+            domain = [('invoice_id', 'in', period_inv.ids)]
+            inv_lines = obj_inv_line.search(domain)
+            cotas = set([tax.id for tax in inv_lines.mapped(
+                'invoice_line_tax_id')])
+            cotas = [x for x in cotas if x]
+            for cota in self.env['account.tax'].browse(cotas):
+                cota_inv = period_inv.filtered(
+                    lambda r: cota.id in r.tax_ids.ids)
+                cota_amount = 0
+                if cota.type == 'percent':
+                    if cota.child_ids:
+                        cota_amount = int(
+                            abs(cota.child_ids[0].amount) * 100)
+                    else:
+                        cota_amount = int(cota.amount * 100)
+                elif cota.type == 'amount':
+                    cota_amount = int(cota.amount)
+                if cota_amount in (5, 9, 19, 20):
+                    domain = [('invoice_id', 'in', cota_inv.ids)]
+                    inv_lines = obj_inv_line.search(domain)
+                    filtered_inv_lines = []
+                    for inv_line in inv_lines:
+                        inv_type = inv_line.invoice_id.type
+                        if inv_type in ('out_invoice',
+                                        'out_refund'):
+                            tax = inv_line.invoice_line_tax_id
+                        if cota.id in tax.ids:
+                            filtered_inv_lines.append(inv_line.id)
+                    inv_lines = obj_inv_line.browse(filtered_inv_lines)
+                    for line in inv_lines:
+                        inv_curr = line.invoice_id.currency_id
+                        inv_date = line.invoice_id.date_invoice
+                        new_base = inv_curr.with_context(
+                            {'date': inv_date}).compute(
+                            line.price_subtotal, comp_curr)
+                        new_taxes = inv_curr.with_context(
+                            {'date': inv_date}).compute(
+                            line.price_normal_taxes and
+                            line.price_normal_taxes or
+                            line.price_taxes, comp_curr)
+                        if cota_amount == 20:
+                            baza20 += new_base
+                            tva20 += new_taxes
+                        if cota_amount == 19:
+                            baza19 += new_base
+                            tva19 += new_taxes
+                        elif cota_amount == 9:
+                            baza9 += new_base
+                            tva9 += new_taxes
+                        elif cota_amount == 5:
+                            baza5 += new_base
+                            tva5 += new_taxes
+            op2.append({
+                'tip_op2': oper_type,
+                'luna': int(period.code[:2]),
+                'nrAMEF': int(round(nrAMEF)),
+                'nrBF': int(round(nrBF)),
+                'total': int(round(baza20 + baza19 + baza9 + baza5 + tva20 + tva19 + tva9 + tva5)),
+                'baza20': int(round(baza20)),
+                'baza19': int(round(baza19)),
+                'baza9': int(round(baza9)),
+                'baza5': int(round(baza5)),
+                'TVA20': int(round(tva20)),
+                'TVA19': int(round(tva19)),
+                'TVA9': int(round(tva9)),
+                'TVA5': int(round(tva5))})
+        return op2
+
+
     def build_file(self):
         year, month = self.get_year_month()
         data_file = """
