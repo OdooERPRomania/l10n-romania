@@ -13,17 +13,8 @@
     "license": "AGPL-3",
     "application": True,
     "installable": True,
-    "external_dependencies": {
-        "python": [
-            "collections",
-            "jinja2",
-            "lxml",
-        ]
-    },
-    "depends": ["date_range", "l10n_ro_vat_on_payment"],
+    "depends": ["l10n_ro_declaration"],
     "data": [
-        "views/anaf_declaration_view.xml",
-        "views/anaf_signature_view.xml",
-        "security/ir.model.access.csv",
+        "views/d394_declaration_view.xml",
     ],
 }

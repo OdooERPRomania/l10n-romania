@@ -42,11 +42,6 @@
         <field name="view_mode">tree,form</field>
     </record>
     <menuitem
-        id="menu_action_anaf_configuration"
-        name="ANAF Configuration"
-        parent="account.account_management_menu"
-    />
-    <menuitem
         id="menu_action_anaf_declaration"
         name="ANAF Declaration"
         action="action_anaf_declaration_view_menu"

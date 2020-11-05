@@ -18,9 +18,10 @@ OPERATION_TYPE = [
     ("N", "Fizical Persons Supplier Invoice"),
 ]
 SEQUENCE_TYPE = [
-     ("normal", "Invoice"),
-     ("autoinv1", "Customer Auto Invoicing"),
-     ("autoinv2", "Supplier  Auto Invoicing"),]
+    ("normal", "Invoice"),
+    ("autoinv1", "Customer Auto Invoicing"),
+    ("autoinv2", "Supplier  Auto Invoicing"),
+]
 
 
 class AccountMove(models.Model):
@@ -54,7 +55,6 @@ class AccountMove(models.Model):
                         )
                     )
         return True
-
 
     def _get_operation_type(self):
         for inv in self:
@@ -108,9 +108,7 @@ class AccountMove(models.Model):
             inv.operation_type = oper_type
         return True
 
-    sequence_type = fields.Selection(
-        SEQUENCE_TYPE, string="Sequence Type"
-    )
+    sequence_type = fields.Selection(SEQUENCE_TYPE, string="Sequence Type")
     operation_type = fields.Selection(
         OPERATION_TYPE,
         compute="_get_operation_type",

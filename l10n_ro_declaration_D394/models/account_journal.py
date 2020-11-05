@@ -22,4 +22,3 @@
 #     )
 #     sequence_type = fields.Selection(
 #         SEQUENCE_TYPE, related="sequence_id.sequence_type", string="Sequence Type")
-

@@ -13,14 +13,14 @@ class AnafSignature(models.Model):
     _description = "Anaf Signature"
 
     name = fields.Char(string="Name", required=True)
-    first_name = fields.Char(string="First Name", compute="_get_partner_name")
-    last_name = fields.Char(string="Last Name", compute="_get_partner_name")
+    first_name = fields.Char(string="First Name", compute="_compute_partner_name")
+    last_name = fields.Char(string="Last Name", compute="_compute_partner_name")
     type = fields.Char(string="Type", required=True)
     function = fields.Char(string="Function", required=True)
     vat = fields.Char(string="VAT", required=True)
     quality = fields.Char(string="Quality", required=True)
 
-    def _get_partner_name(self):
+    def _compute_partner_name(self):
         for partner in self:
             partner.first_name = _partner_split_name(partner.name)[0]
             partner.last_name = _partner_split_name(partner.name)[1]
