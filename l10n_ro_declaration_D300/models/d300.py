@@ -7,7 +7,7 @@ from odoo import api, fields, models
 class RunDeclaration(models.TransientModel):
     _name = "anaf.d300"
     _inherit = "anaf.mixin"
-    _description = "Declaratie D300, versiunea 6"
+    _description = "Declaratie D300"
 
     succesor_id = fields.Many2one(
         "res.partner",
