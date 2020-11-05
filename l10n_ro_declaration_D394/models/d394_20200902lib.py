@@ -747,26 +747,13 @@ class Informatii(models.AbstractModel):
     _generateds_type = "InformatiiType"
     _concrete_rec_name = "nrCui1"
 
-    nrCui1 = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrCui1", xsd_required=True
-    )
-    nrCui2 = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrCui2", xsd_required=True
-    )
-    nrCui3 = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrCui3", xsd_required=True
-    )
-    nrCui4 = fields.Many2one(
-        "D394.30.intpoz15stype", string="nrCui4", xsd_required=True
-    )
-    nr_BF_i1 = fields.Many2one(
-        "D394.30.intpoz15stype", string="nr_BF_i1", xsd_required=True
-    )
-    incasari_i1 = fields.Integer(
-        string="incasari_i1", xsd_required=True, xsd_type="integer"
-    )
-    incasari_i2 = fields.Integer(
-        string="incasari_i2", xsd_required=True, xsd_type="integer"
+    nrCui1 = fields.Integer( string="nrCui1", xsd_required=True, xsd_type="integer" )
+    nrCui2 = fields.Integer( string="nrCui2", xsd_required=True,xsd_type="integer")
+    nrCui3 = fields.Integer(string="nrCui3", xsd_required=True, xsd_type="integer")
+    nrCui4 = fields.Integer(string="nrCui4", xsd_required=True, xsd_type="integer")
+    nr_BF_i1 = fields.Integer( string="nr_BF_i1", xsd_required=True,xsd_type="integer")
+    incasari_i1 = fields.Integer(string="incasari_i1", xsd_required=True, xsd_type="integer")
+    incasari_i2 = fields.Integer(string="incasari_i2", xsd_required=True, xsd_type="integer"
     )
     nrFacturi_terti = fields.Integer( string="nrFacturi_terti", xsd_required=True,xsd_type="integer")
     nrFacturi_benef = fields.Integer( string="nrFacturi_benef", xsd_required=True, xsd_type="integer")
@@ -858,8 +845,7 @@ class Lista(models.AbstractModel):
     _concrete_rec_name = "caen"
 
     lista_Declaratie394_id = fields.Many2one("D394.30.declaratie394")
-    caen = fields.Integer(
-        "D394.30.int_listacaenstype", string="caen", xsd_required=True, xsd_type="integer")
+    caen = fields.Integer(string="caen", xsd_required=True, xsd_type="integer")
     cota = fields.Integer( string="cota", xsd_required=True, xsd_type="integer"  )
     operat = fields.Integer(string="operat", xsd_required=True, xsd_type="integer")
     valoare = fields.Integer(string="valoare", xsd_required=True, xsd_type="integer")
@@ -922,8 +908,8 @@ class Op2(models.AbstractModel):
         "D394.30.str_tipoperatiestype", string="tip_op2", xsd_required=True
     )
     luna = fields.Integer(string="luna", xsd_required=True, xsd_type="integer")
-    nrAMEF = fields.Integer("D394.30.intpoz4stype", string="nrAMEF")
-    nrBF = fields.Integer("D394.30.intpoz15stype", string="nrBF")
+    nrAMEF = fields.Integer( string="nrAMEF",  xsd_required=True, xsd_type="integer")
+    nrBF = fields.Integer(string="nrBF",  xsd_required=True, xsd_type="integer")
     total = fields.Integer( string="total", xsd_required=True, xsd_type="integer")
     baza20 = fields.Integer( string="baza20", xsd_required=True, xsd_type="integer")
     baza9 = fields.Integer( string="baza9", xsd_required=True, xsd_type="integer")
@@ -1015,15 +1001,11 @@ class Rezumat2(models.AbstractModel):
     nrFacturiL = fields.Integer(xsd_type="integer", string="nrFacturiL", xsd_required=True)
     bazaL = fields.Integer(string="bazaL", xsd_required=True, xsd_type="integer")
     tvaL = fields.Integer(string="tvaL", xsd_required=True, xsd_type="integer")
-    nrFacturiA = fields.Integer(
-        "D394.30.intpoz15stype", string="nrFacturiA", xsd_required=True
-    )
+    nrFacturiA = fields.Integer( string="nrFacturiA", xsd_required=True)
     bazaA = fields.Integer(string="bazaA", xsd_required=True, xsd_type="integer")
     tvaA = fields.Integer(string="tvaA", xsd_required=True, xsd_type="integer")
     nrFacturiAI = fields.Integer( string="nrFacturiAI", xsd_required=True)
-    bazaAI = fields.Integer(
-        string="bazaAI", xsd_required=True, xsd_type="integer"
-    )
+    bazaAI = fields.Integer(string="bazaAI", xsd_required=True, xsd_type="integer")
     tvaAI = fields.Integer(string="tvaAI", xsd_required=True, xsd_type="integer")
     baza_incasari_i1 = fields.Integer(
         string="baza_incasari_i1", xsd_type="integer"
