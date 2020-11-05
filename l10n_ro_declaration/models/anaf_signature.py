@@ -15,7 +15,10 @@ class AnafSignature(models.Model):
     name = fields.Char(string="Name", required=True)
     first_name = fields.Char(string="First Name", compute="_compute_partner_name")
     last_name = fields.Char(string="Last Name", compute="_compute_partner_name")
-    type = fields.Char(string="Type", required=True)
+    type = fields.Selection(
+        [('person', 'Fizical Person'),
+         ('company', 'Company')],
+        string="Type", required=True, default='person')
     function = fields.Char(string="Function", required=True)
     vat = fields.Char(string="VAT", required=True)
     quality = fields.Char(string="Quality", required=True)

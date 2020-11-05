@@ -1,9 +1,6 @@
-# Copyright 2020 Akretion - Raphaël Valyi <raphael.valyi@akretion.com>
-# License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
-# Generated Sun Oct 18 11:13:02 2020 by https://github.com/akretion/generateds-odoo
-# and generateDS.py.
-# Python 3.6.9 (default, Oct  8 2020, 12:12:24)  [GCC 8.4.0]
-#
+# Copyright (C) 2020 NextERP Romania
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
+
 from odoo import fields, models
 
 
@@ -16,14 +13,11 @@ class Declaratie394(models.AbstractModel):
         "res.partner",
         string="Intocmit",
     )
-
     optiune = fields.Boolean(string="optiune")
     schimb_optiune = fields.Boolean(string="schimb_optiune")
     prsAfiliat = fields.Boolean(string="prsAfiliat")
 
-    solicit = fields.Integer(
-        string="solicit", xsd_required=True,
-        compute="_compute_solicit_amounts")
+    solicit = fields.Boolean(string="solicit")
     achizitiiPE = fields.Integer(
         string="achizitiiPE",
         compute="_compute_solicit_amounts")
@@ -131,4 +125,4 @@ class Declaratie394(models.AbstractModel):
         compute="_compute_solicit_amounts")
     efectuat = fields.Integer(
         string="efectuat",
-        compute="_compute_operations")
+        compute="_compute_solicit_amounts")

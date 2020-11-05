@@ -8,14 +8,83 @@ from odoo import fields, models
 
 class Declaratie394(models.AbstractModel):
     _name = "anaf.d394.v30"
-    _inherit = "anaf.mixin"
+    _inherit = "anaf.d394"
     _description = "declaratie394"
 
+    def build_file(self):
+        year, month = self.get_year_month()
+        months = self.get_months_number()
+        tip_D394 = "L"
+        if months == 3:
+            tip_D394 = "T"
+        elif months == 6:
+            tip_D394 = "S"
+        elif months == 12:
+            tip_D394 = "A"
+
+        data_file = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <declaratie394 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="mfp:anaf:dgti:d394:declaratie:v3 D394.xsd"
+            xmlns="mfp:anaf:dgti:d394:declaratie:v3" """
+
+        xmldict = {
+            "luna": month,
+            "an": year,
+            "op_efectuate": 1,
+            "optiune": int(self.optiune),
+            "schimb_optiune": int(self.schimb_optiune),
+            "prsAfiliat": int(self.prsAfiliat),
+            'informatii': [],
+            'rezumat1': [],
+            'rezumat2': [],
+            'serieFacturi': [],
+            'lista': [],
+            'facturi': [],
+            'op1': [],
+            'op2': []
+        }
+        company_data = self.generate_company_data()
+        xmldict.update(company_data)
+        sign = self.generate_sign()
+        xmldict.update(sign)
+        month_data = self.generate_data()
+        xmldict.update(month_data)
+        for key, val in xmldict.items():
+            data_file += """{}={} """.format(key, self.value_to_string(val))
+        data_file += """ />"""
+        return data_file
+
+    def generate_company_data(self):
+        data = {
+            "cui": int(self.company_id.partner_id.vat_number),
+            "den": self.company_id.name,
+            "adresa": self.company_id.partner_id._display_address(
+                without_company=True
+            ).replace("\n", ","),
+            "telefon": self.company_id.phone,
+            "mail": self.company_id.email,
+            "caen": self.company_id.caen_code,
+            "sistemTVA": self.company_id.partner_id.with_context({'check_date': self.date_to})._check_vat_on_payment()
+        }
+        return data
+
+    def generate_sign(self):
+        signer = self.signature_id
+        data = {
+            "tip_intocmit": 1,
+            "den_intocmit": signer.name,
+            "Dcif_intocmit": signer.vat
+        }
+        if signer.type == 'company':
+            data.update({"calitate_intocmit": signer.quality})
+        else:
+            data.update({"functie_intocmit ": signer.function})
+        return data
 
     def generate_facturi(self):
         year, mounth = self.get_year_month()
         obj_invoice = self.env['account.move']
-        obj_period = self.env['account.period']
         comp_currency = self.company_id.currency_id
         facturi = []
         invoices1 = obj_invoice.search([
@@ -99,7 +168,6 @@ class Declaratie394(models.AbstractModel):
                     factura = self.env['facturi'].create(new_dict)
                 facturi.append(new_dict)
         return facturi
-
 
     def _get_op1(self, invoices):
         def adauga_op1(op1, new):
@@ -482,7 +550,6 @@ class Declaratie394(models.AbstractModel):
                             op1 = adauga_op1(op1, new_dict)
         return op1
 
-
     def _get_op2(self, invoices):
         self.ensure_one()
         if fields.Date.from_string(self.date_from) < \
@@ -571,64 +638,3 @@ class Declaratie394(models.AbstractModel):
                 'TVA9': int(round(tva9)),
                 'TVA5': int(round(tva5))})
         return op2
-
-
-    def build_file(self):
-        year, month = self.get_year_month()
-        data_file = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <declaratie394 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xsi:schemaLocation="mfp:anaf:dgti:d394:declaratie:v3 D394.xsd"
-            xmlns="mfp:anaf:dgti:d394:declaratie:v3" """
-
-        xmldict = {
-            "luna": month,
-            "an": year,
-            "sistemTVA": self.company_id.partner_id.vat_on_payment,
-            "op_efectuate": 1,
-            "cui": self.company_id.partner_id.vat_number,
-            "caen": self.company_id.caen_code,
-            "den": self.company_id.name,
-            "adresa": self.company_id.partner_id._display_address(without_company=False).replace("\n", ","),
-            "telefon": self.company_id.phone,
-            "fax": self.company_id.fax,
-            "mail": self.company_id.email,
-            "totalPlata_A": 0,
-            "tip_intocmit": 1,
-            "den_intocmit": self.user.partner_id.commercial_partner_id,
-            "Dcif_intocmit": self.user.partner_id.commercial_partner_id.vat_number}
-
-        if self.user.partner_id.comercial_partener_id:
-            xmldict.update({"calitate_intocmit": self.user.partner_id.functie})
-        else:
-            xmldict.update({"functie_intocmit ": self.user.partner_id.vat and self.user.partner_id.vat[2:] or ''})
-
-        xmldict.update({"optiune": 1,
-                        "schimb_optiune": 1,
-                        "prsAfiliat": 1})
-        obj_invoice = self.env['account.move']
-        invoices = obj_invoice.search([
-            ('state', 'in', ['open', 'paid']),
-            # ('period_id', '=', period.id),
-            ('fiscal_receipt', '=', False),
-            ('date_invoice', '>=', self.date_from),
-            ('date_invoice', '<=', self.date_to),
-            '|',
-            ('company_id', '=', self.company_id.id),
-            ('company_id', 'in', self.company_id.child_ids.ids)
-        ])
-        xmldict.update({'informatii': [],
-                        'rezumat1': [],
-                        'rezumat2': [],
-                        'serieFacturi': [],
-                        'lista': [],
-                        'facturi': self.generate_facturi(),
-                        'op1': self._get_op1(invoices),
-                        'op2': []})
-
-        company_data = self.generate_company_data()
-        xmldict.update(company_data)
-        sign = self.generate_sign()
-        xmldict.update(sign)
-        vat_report = self.generate_data()
-        xmldict.update(vat_report)
