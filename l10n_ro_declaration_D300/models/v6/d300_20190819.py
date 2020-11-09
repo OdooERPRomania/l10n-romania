@@ -59,8 +59,11 @@ class Declaratie300(models.TransientModel):
 
         vat_report_totals = self.generate_total()
         xmldict.update(vat_report_totals)
+        total_keys = ["nr_facturi", "baza", "tva",
+                      "nr_facturi_primite", "baza_primite", "tva_primite"]
         for _key, value in vat_report_totals.items():
-            totalPlata_A += value
+            if _key in total_keys:
+                totalPlata_A += value
 
         xmldict["totalPlata_A"] = totalPlata_A
 
@@ -135,18 +138,12 @@ class Declaratie300(models.TransientModel):
             "R7_1_2": self.get_amount(vat_report, "07_1 - TVA"),
             "R8_1": self.get_amount(vat_report, "08 - BAZA"),
             "R8_2": self.get_amount(vat_report, "08 - TVA"),
-            "R9_1": self.get_amount(vat_report, "09_1 - BAZA")
-            + int(0.5 * self.get_amount(vat_report, "24_2 - BAZA")),
-            "R9_2": self.get_amount(vat_report, "09_1 - TVA")
-            + self.get_amount(vat_report, "09_2 - TVA"),
-            "R10_1": self.get_amount(vat_report, "10_1 - BAZA")
-            + int(0.5 * self.get_amount(vat_report, "25_2 - BAZA")),
-            "R10_2": self.get_amount(vat_report, "10_1 - TVA")
-            + self.get_amount(vat_report, "10_2 - BAZA"),
-            "R11_1": self.get_amount(vat_report, "11_1 - BAZA")
-            + int(0.5 * self.get_amount(vat_report, "26_2 - BAZA")),
-            "R11_2": self.get_amount(vat_report, "11_1 - TVA")
-            + self.get_amount(vat_report, "11_2 - TVA"),
+            "R9_1": self.get_amount(vat_report, "09 - BAZA"),
+            "R9_2": self.get_amount(vat_report, "09 - TVA"),
+            "R10_1": self.get_amount(vat_report, "10 - BAZA"),
+            "R10_2": self.get_amount(vat_report, "10 - TVA"),
+            "R11_1": self.get_amount(vat_report, "11 - BAZA"),
+            "R11_2": self.get_amount(vat_report, "11 - TVA"),
             "R12_1": self.get_amount(vat_report, "12 - BAZA"),
             "R12_2": self.get_amount(vat_report, "12 - TVA"),
             "R12_1_1": self.get_amount(vat_report, "12_1 - BAZA"),
@@ -177,12 +174,18 @@ class Declaratie300(models.TransientModel):
             "R20_1_2": self.get_amount(vat_report, "22_1 - TVA"),
             "R21_1": self.get_amount(vat_report, "23 - BAZA"),
             "R21_2": self.get_amount(vat_report, "23 - TVA"),
-            "R22_1": self.get_amount(vat_report, "24 - BAZA"),
-            "R22_2": self.get_amount(vat_report, "24 - TVA"),
-            "R23_1": self.get_amount(vat_report, "25 - BAZA"),
-            "R23_2": self.get_amount(vat_report, "25 - TVA"),
-            "R24_1": self.get_amount(vat_report, "26 - BAZA"),
-            "R24_2": self.get_amount(vat_report, "26 - TVA"),
+            "R22_1": self.get_amount(vat_report, "24_1 - BAZA")
+                     + int(round(0.5 * self.get_amount(vat_report, "24_2 - BAZA"))),
+            "R22_2": self.get_amount(vat_report, "24_1 - TVA")
+                     + self.get_amount(vat_report, "24_2 - TVA"),
+            "R23_1": self.get_amount(vat_report, "25_1 - BAZA")
+                     + int(round(0.5 * self.get_amount(vat_report, "25_2 - BAZA"))),
+            "R23_2": self.get_amount(vat_report, "25_1 - TVA")
+                     + self.get_amount(vat_report, "25_2 - TVA"),
+            "R24_1": self.get_amount(vat_report, "26_1 - BAZA")
+                     + int(round(0.5 * self.get_amount(vat_report, "26_2 - BAZA"))),
+            "R24_2": self.get_amount(vat_report, "26_1 - TVA")
+                     + self.get_amount(vat_report, "26_2 - TVA"),
             "R25_1": self.get_amount(vat_report, "27 - BAZA"),
             "R25_2": self.get_amount(vat_report, "27 - TVA"),
             "R25_1_1": self.get_amount(vat_report, "27_1 - BAZA"),
@@ -203,6 +206,27 @@ class Declaratie300(models.TransientModel):
             "R36_2": self.get_amount(vat_report, "40 - TVA"),
             "R39_2": self.get_amount(vat_report, "43 - TVA"),
         }
+
+        data["R12_1"] += (
+            data.get("R12_1_1", 0)
+            + data.get("R12_2_1", 0)
+            + data.get("R12_3_1", 0)
+        )
+        data["R12_2"] += (
+            data.get("R12_1_2", 0)
+            + data.get("R12_2_2", 0)
+            + data.get("R12_3_2", 0)
+        )
+        data["R25_1"] += (
+            data.get("R25_1_1", 0)
+            + data.get("R25_2_1", 0)
+            + data.get("R25_3_1", 0)
+        )
+        data["R25_2"] += (
+            data.get("R25_1_2", 0)
+            + data.get("R25_2_2", 0)
+            + data.get("R25_3_2", 0)
+        )
         data["R17_1"] = (
             data.get("R1_1", 0)
             + data.get("R2_1", 0)
@@ -241,7 +265,6 @@ class Declaratie300(models.TransientModel):
             + data.get("R23_1", 0)
             + data.get("R24_1", 0)
             + data.get("R25_1", 0)
-            + data.get("R26_1", 0)
         )
         data["R27_2"] = (
             data.get("R18_2", 0)
@@ -255,7 +278,7 @@ class Declaratie300(models.TransientModel):
             + data.get("R43_2", 0)
             + data.get("R44_2", 0)
         )
-        data["R28_2"] = self.R28_2
+        data["R28_2"] = data["R27_2"]
         data["R32_2"] = (
             data.get("R28_2", 0)
             + data.get("R29_2", 0)
@@ -280,13 +303,18 @@ class Declaratie300(models.TransientModel):
 
     def generate_total(self):
         self.ensure_one()
-        cust_invoices = self.get_period_invoices(["out_invoice", "out_refund"])
-        supp_invoices = self.get_period_invoices(["in_invoice", "in_refund"])
-        cust_vatp_invoices = self.get_period_vatp_invoices(["in_invoice", "in_refund"])
+        cust_invoices = \
+            self.get_period_invoices(["out_invoice", "out_refund"]).filtered(
+                lambda i: i.correction
+            )
+        supp_invoices = self.get_period_invoices(["in_invoice", "in_refund"]).filtered(
+                lambda i: i.correction
+            )
+        cust_vatp_invoices = self.get_period_vatp_invoices(["out_invoice", "out_refund"])
         supp_vatp_invoices = self.get_period_vatp_invoices(["in_invoice", "in_refund"])
         valoare_a = valoare_a1 = tva_a = tva_a1 = 0
         valoare_b = valoare_b1 = tva_b = tva_b1 = 0
-        date1 = self.date_to - relativedelta(months=1)
+        date1 = self.date_to - relativedelta(months=6)
         for inv in cust_vatp_invoices:
             valoare_a += inv.amount_untaxed_signed
             tva_a += inv.amount_tax_signed
@@ -302,8 +330,8 @@ class Declaratie300(models.TransientModel):
                     valoare_a1 += line.tax_base_amount
                     tva_a1 += line.balance
         for inv in supp_vatp_invoices:
-            valoare_a += inv.amount_untaxed_signed
-            tva_a += inv.amount_tax_signed
+            valoare_b += inv.amount_untaxed_signed
+            tva_b += inv.amount_tax_signed
             cash_basis_moves = self.env["account.move"].search(
                 [("tax_cash_basis_move_id", "=", inv.id), ("date", "<=", self.date_to)]
             )

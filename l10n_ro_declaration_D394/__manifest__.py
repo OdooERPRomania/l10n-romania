@@ -15,12 +15,9 @@
     "installable": True,
     "depends": ["l10n_ro_declaration"],
     "data": [
-<<<<<<< HEAD
         "views/d394_declaration_view.xml",
-=======
        # "views/anaf_declaration_view.xml",
        # "views/anaf_signature_view.xml",
       #"security/ir.model.access.csv",
->>>>>>> ac7b3dfea316898b1c84ae480175eb8821ea90df
     ],
 }

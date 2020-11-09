@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <!-- ANAF D300 Declaration -->
+    <record id="anaf_D300" model="anaf.declaration">
+        <field name="name">d300</field>
+    </record>
+
+    <!-- ANAF D300 Declaration - Version 6 -->
+    <record id="anaf_d300_v6_xsd" model="ir.attachment">
+        <field name="name">d300_20190819.xsd</field>
+        <field name="datas" type="base64" file="l10n_ro_declaration_D300/static/xsd/d300_20190819.xsd"></field>
+    </record>
+    <record id="anaf_D300_v6" model="anaf.declaration.version">
+        <field name="name">Versiunea 6</field>
+        <field name="model" ref="model_anaf_d300_v60"/>
+        <field name="declaration_id" ref="anaf_D300"/>
+        <field name="validator" ref="anaf_d300_v6_xsd"/>
+    </record>
+</odoo>

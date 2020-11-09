@@ -13,5 +13,8 @@
     "application": False,
     "installable": True,
     "depends": ["l10n_ro_declaration"],
-    "data": ["security/ir.model.access.csv", "views/d300_declaration_view.xml"],
+    "data": [
+        "data/anaf_d300.xml",
+        "security/ir.model.access.csv",
+        "views/d300_declaration_view.xml"],
 }
