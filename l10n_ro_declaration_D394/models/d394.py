@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class Declaratie394(models.AbstractModel):
+class RunDeclaration(models.TransientModel):
     _name = "anaf.d394"
     _inherit = "anaf.mixin"
     _description = "Declaratie 394"

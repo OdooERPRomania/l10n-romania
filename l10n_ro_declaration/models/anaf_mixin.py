@@ -10,7 +10,7 @@ from lxml import etree
 from odoo import _, api, fields, models
 from odoo.tools import xml_utils
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class AnafMixin(models.AbstractModel):
@@ -139,6 +139,7 @@ class AnafMixin(models.AbstractModel):
     def get_report(self):
         model = self.version_id.model
         validator = self.version_id.validator
+        _logger.warning(model.model)
         declaration = self.env[model.model].create(
             {
                 "company_id": self.company_id.id,

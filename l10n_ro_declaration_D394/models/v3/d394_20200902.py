@@ -2,14 +2,17 @@
 # Copyright (C) 2018 Terrabit
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
-
+import logging
 from odoo import fields, models
 
 
-class Declaratie394(models.AbstractModel):
+_logger = logging.getLogger(__name__)
+
+
+class Declaratie394(models.TransientModel):
     _name = "anaf.d394.v30"
     _inherit = "anaf.d394"
-    _description = "declaratie394"
+    _description = "declaratie 394, v30"
 
     def build_file(self):
         year, month = self.get_year_month()
@@ -21,12 +24,26 @@ class Declaratie394(models.AbstractModel):
             tip_D394 = "S"
         elif months == 12:
             tip_D394 = "A"
+        obj_invoice = self.env['account.move']
+
+        invoices = obj_invoice.search([
+            ('state', 'in', ['posted']),
+            ('move_type', '!=', 'out_receipt'),
+            ('invoice_date', '>=', self.date_from),
+            ('invoice_date', '<=', self.date_to),
+            '|',
+            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.company_id.child_ids.ids)
+        ])
+        _logger.warning(invoices)
 
         data_file = """
             <?xml version="1.0" encoding="UTF-8"?>
             <declaratie394 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="mfp:anaf:dgti:d394:declaratie:v3 D394.xsd"
             xmlns="mfp:anaf:dgti:d394:declaratie:v3" """
+
+
 
         xmldict = {
             "luna": month,
@@ -40,24 +57,29 @@ class Declaratie394(models.AbstractModel):
             'rezumat2': [],
             'serieFacturi': [],
             'lista': [],
-            'facturi': [],
-            'op1': [],
-            'op2': []
+            'facturi': self.generate_facturi(),
+            'op1': self._get_op1(invoices),
+           # 'op2': self._get_op2(invoice1)
         }
         company_data = self.generate_company_data()
         xmldict.update(company_data)
         sign = self.generate_sign()
         xmldict.update(sign)
-        month_data = self.generate_data()
-        xmldict.update(month_data)
+        _logger.warning(xmldict)
         for key, val in xmldict.items():
             data_file += """{}={} """.format(key, self.value_to_string(val))
         data_file += """ />"""
         return data_file
 
     def generate_company_data(self):
+        if self.company_id.partner_id.vat_number.find("RO")==1:
+            cui = int(self.company_id.partner_id.vat_number[2:])
+        else :
+            cui = int(self.company_id.partner_id.vat_number)
+
+
         data = {
-            "cui": int(self.company_id.partner_id.vat_number),
+            "cui": cui,
             "den": self.company_id.name,
             "adresa": self.company_id.partner_id._display_address(
                 without_company=True
@@ -88,11 +110,10 @@ class Declaratie394(models.AbstractModel):
         comp_currency = self.company_id.currency_id
         facturi = []
         invoices1 = obj_invoice.search([
-            ('fiscal_receipt', '=', False),
+           # ('fiscal_receipt', '=', False),
             ('state', '!=', 'draft'),
-            ('period_id', '=', self.period_id.id),
-            ('date_invoice', '>=', self.date_from),
-            ('date_invoice', '<=', self.date_to),
+            ('invoice_date', '>=', self.date_from),
+            ('invoice_date', '<=', self.date_to),
             '|',
             ('company_id', '=', self.company_id.id),
             ('company_id', 'in', self.company_id.child_ids.ids)
@@ -101,6 +122,7 @@ class Declaratie394(models.AbstractModel):
             lambda r:
             r.amount_total < 0 or r.state == 'cancel' or
             r.sequence_type in ('autoinv1', 'autoinv2'))
+
         for inv in invoices:
 
             baza24 = baza20 = baza19 = baza9 = baza5 = 0
@@ -149,8 +171,8 @@ class Declaratie394(models.AbstractModel):
                                 tva5 += new_taxes
                 new_dict = {
                     'tip_factura': inv_type,
-                    'serie': inv.inv_serie,
-                    'nr': inv.inv_number,
+                    'serie': inv.sequence_prefix,
+                    'nr': inv.sequence_number,
                 }
                 if inv_type == 3:
                     new_dict.update({
@@ -165,7 +187,6 @@ class Declaratie394(models.AbstractModel):
                         'tva20': int(round(tva20)),
                         'tva24': int(round(tva24))
                     })
-                    factura = self.env['facturi'].create(new_dict)
                 facturi.append(new_dict)
         return facturi
 
@@ -220,20 +241,35 @@ class Declaratie394(models.AbstractModel):
         comp_curr = self.company_id.currency_id
         op1 = []
         oper_types = set([invoice.operation_type for invoice in invoices])
+        _logger.warning(oper_types)
         for oper_type in oper_types:
+            _logger.warning(oper_types)
+
             oper_type_inv = invoices.filtered(
                 lambda r: r.operation_type == oper_type)
+            for invt in oper_type_inv:
+                _logger.warning(invt.name)
+                _logger.warning(invt.operation_type)
+            _logger.warning("Oper Type Inv")
+            _logger.warning(oper_type_inv)
             partner_types = set([
                 invoice.partner_type for invoice in oper_type_inv])
             for partner_type in partner_types:
-                part_type_inv = oper_type_inv.filtered(
-                    lambda r: r.partner_type == partner_type)
+                part_type_inv_line= oper_type_inv.line_ids.filtered(
+                    lambda r: r.move_id.partner_type == partner_type)
+                _logger.warning("Partener Oper Type Inv")
+                _logger.warning(part_type_inv_line)
+                for temp in part_type_inv_line :
+                    _logger.warning(temp.move_id)
+                    _logger.warning(temp.tax_ids)
+                    _logger.warning(temp.account_id.code)
+                    _logger.warning(temp.balance)
                 cotas = []
-                for invoice in part_type_inv:
+                for invoice in part_type_inv_line:
                     cotas += set([tax.id for tax in invoice.tax_ids])
                 cotas = set(cotas)
                 for cota in obj_tax.browse(cotas):
-                    cota_inv = part_type_inv.filtered(
+                    cota_inv = part_type_inv_line.filtered(
                         lambda r: cota.id in r.tax_ids.ids)
                     partners = cota_inv.mapped('partner_id.id')
                     for partner in obj_partner.browse(partners):
@@ -242,7 +278,7 @@ class Declaratie394(models.AbstractModel):
                             lambda r: r.partner_id.id == partner.id)
                         cota_amount = 0
                         if cota.amount_type == 'percent':
-                            if cota.child_ids:
+                            if cota.children_tax_ids:
                                 cota_amount = int(
                                     abs(cota.child_ids[0].amount) * 100)
                             else:
@@ -287,30 +323,30 @@ class Declaratie394(models.AbstractModel):
                                             if inv_type in ('out_invoice',
                                                             'out_refund'):
                                                 tax = product.taxes_id
-                                            if cota.id in tax.ids:
+                                            if cota.id in tax:
                                                 filtered_inv_lines.append(
                                                     inv_line.id)
                                     inv_lines = obj_inv_line.browse(
                                         filtered_inv_lines)
-                                    op1 = Op1()
-                                    op1.baza = 0
+
+                                    baza = 0
                                     for line in inv_lines:
                                         inv_curr = line.invoice_id.currency_id
                                         inv_date = line.invoice_id.date_invoice
                                         op1.baza += inv_curr.with_context(
                                             {'date': inv_date}).compute(
                                             line.price_subtotal, comp_curr)
-                                    op1.taxes = 0
-                                    op1.tip = new_oper_type
-                                    op1.tip_partener = partner_types
-                                    op1.cota_amount = cota_amount
-                                    op1.denP = partner.name.replace(
+                                    taxes = 0
+                                    tip = new_oper_type
+                                    tip_partener = partner_types
+                                    cota_amount = cota_amount
+                                    denP = partner.name.replace(
                                         '&', '-').replace('"', '')
-                                    op1.nrFact = len(set(
+                                    nrFact = len(set(
                                         [line.invoice_id.id for
                                          line in inv_lines]))
-                                    op1.baza = int(round(op1.baza))
-                                    op1.tip_document = doc_type
+                                    baza = int(round(op1.baza))
+                                    tip_document = doc_type
                                     new_dict = {
                                         'tip': new_oper_type,
                                         'tip_partener': partner_type,
@@ -336,7 +372,7 @@ class Declaratie394(models.AbstractModel):
                                         (('Regim Intra-Comunitar Scutit' in
                                           inv.fiscal_position_id.name) and
                                          inv.partner_type in ('1', '2'))):
-                                        tax = inv_line.invoice_line_tax_id
+                                        tax = inv_line.tax_ids
                                         if cota.id in tax.ids:
                                             filtered_inv_lines.append(
                                                 inv_line.id)
@@ -350,15 +386,15 @@ class Declaratie394(models.AbstractModel):
                                                 inv_line.id)
                                 inv_lines = obj_inv_line.browse(
                                     filtered_inv_lines)
-                                op1.baza = 0
-                                op1.taxes = 0
+                                baza = 0
+                                taxes = 0
                                 for line in inv_lines:
                                     inv_curr = line.invoice_id.currency_id
                                     inv_date = line.invoice_id.date_invoice
-                                    op1.baza += inv_curr.with_context(
+                                    baza += inv_curr.with_context(
                                         {'date': inv_date}).compute(
                                         line.price_subtotal, comp_curr)
-                                    op1.taxes += inv_curr.with_context(
+                                    taxes += inv_curr.with_context(
                                         {'date': inv_date}).compute(
                                         line.price_normal_taxes and
                                         line.price_normal_taxes or
@@ -418,37 +454,38 @@ class Declaratie394(models.AbstractModel):
                                         partner.vat)[1]
                         else:
                             domain = [('invoice_id', 'in', part_invoices.ids)]
-                            inv_lines = obj_inv_line.search(domain)
+                            #inv_lines = obj_inv_line.search(domain)
+                            inv_lines =part_invoices
                             filtered_inv_lines = []
                             for inv_line in inv_lines:
-                                fp = inv_line.invoice_id.fiscal_position_id
+                                fp = inv_line.move_id.fiscal_position_id
                                 tax = inv_line.product_id.supplier_taxes_id
-                                inv = inv_line.invoice_id
+                                inv = inv_line.move_id
                                 if not fp or (
-                                    ('National' in fp.name) or
-                                    ('Invers' in fp.name) or
-                                    (('Scutit' in
+                                    ('Regim National' in fp.name) or
+                                    ('Regim Taxare Inversa' in fp.name) or
+                                    (('Regim Scutite - cu drept de deducere' in
                                       inv.fiscal_position_id.name) and
                                      inv.partner_type == '2')):
-                                    tax = inv_line.invoice_line_tax_id
-                                    if cota.id in tax.ids:
+                                    tax = inv_line.tax_ids
+                                    if cota.id == tax.id:
                                         filtered_inv_lines.append(
                                             inv_line.id)
-                                elif not fp or ('Scutit' not in
+                                elif not fp or ('Regim Scutite - cu drept de deducere' not in
                                                 inv.fiscal_position_id.name):
                                     inv_type = inv_line.invoice_id.type
                                     if inv_type in ('out_invoice',
                                                     'out_refund'):
                                         tax = inv_line.product_id.taxes_id
-                                    if cota.id in tax.ids:
+                                    if cota.id == tax.id:
                                         filtered_inv_lines.append(
                                             inv_line.id)
                             inv_lines = obj_inv_line.browse(filtered_inv_lines)
                             baza = 0
                             taxes = 0
                             for line in inv_lines:
-                                inv_curr = line.invoice_id.currency_id
-                                inv_date = line.invoice_id.date_invoice
+                                inv_curr = line.move_id.currency_id
+                                inv_date = line.move_id.invoice_date
                                 baza += inv_curr.with_context(
                                     {'date': inv_date}).compute(
                                     line.price_subtotal, comp_curr)
@@ -456,11 +493,12 @@ class Declaratie394(models.AbstractModel):
                                     ('L', 'A', 'AI'):
                                     taxes += inv_curr.with_context(
                                         {'date': inv_date}).compute(
-                                        line.price_taxes, comp_curr)
+                                        line.tax_base_amount, comp_curr)
                                 if (new_oper_type == 'C') or \
                                     ((new_oper_type == 'L') and
-                                     (line.invoice_id.partner_type in
+                                     (line.move_id.partner_type in
                                       ('3', '4'))):
+                                    _logger.warning(line.tax_base_amount)
                                     taxes += inv_curr.with_context(
                                         {'date': inv_date}).compute(
                                         line.price_normal_taxes and
@@ -482,72 +520,72 @@ class Declaratie394(models.AbstractModel):
                             if new_oper_type in ('A', 'L', 'C', 'AI'):
                                 new_dict['tva'] = int(round(taxes))
 
-                        if inv_lines:
-                            codes = inv_lines.mapped('product_id.d394_id')
-                            op11 = []
-                            if (partner_type == '1' and new_oper_type in (
-                                'V', 'C')) or (partner_type == '2' and
-                                               new_oper_type == 'N'):
-                                for code in codes:
-                                    new_code = code
-                                    if code.parent_id:
-                                        new_code = code.parent_id
-                                    cod_lines = []
-                                    if partner_type == '1':
-                                        cod_lines = [
-                                            line for line in
-                                            inv_lines.filtered(
-                                                lambda r:
-                                                r.product_id.d394_id.id ==
-                                                code.id and
-                                                new_code.name <= '31')
-                                        ]
-                                    else:
-                                        cod_lines = [
-                                            line for line in
-                                            inv_lines.filtered(
-                                                lambda r:
-                                                r.product_id.d394_id.id ==
-                                                code.id)
-                                        ]
-                                    if cod_lines:
-                                        nrFact = len(set([
-                                            line.invoice_id.id for line in
-                                            inv_lines.filtered(
-                                                lambda r:
-                                                r.product_id.d394_id.id ==
-                                                code.id)]))
-                                        baza1 = 0
-                                        taxes1 = 0
-                                        for line in cod_lines:
-                                            inv_curr = \
-                                                line.invoice_id.currency_id
-                                            inv_date = \
-                                                line.invoice_id.date_invoice
-                                            baza1 += inv_curr.with_context(
-                                                {'date': inv_date}).compute(
-                                                line.price_subtotal,
-                                                comp_curr)
-                                            new_taxes = inv_curr.with_context(
-                                                {'date': inv_date}).compute(
-                                                line.price_normal_taxes and
-                                                line.price_normal_taxes or
-                                                line.price_taxes,
-                                                comp_curr)
-                                            if new_oper_type == 'C':
-                                                taxes1 += new_taxes
-                                        op11_dict = {
-                                            'codPR': code.name,
-                                            'nrFactPR': nrFact,
-                                            'bazaPR': int(round(baza1))
-                                        }
-                                        if new_oper_type in (
-                                            'A', 'L', 'C', 'AI'):
-                                            op11_dict['tvaPR'] = \
-                                                int(round(taxes1))
-                                        op11.append(op11_dict)
-                            new_dict['op11'] = op11
-                            op1 = adauga_op1(op1, new_dict)
+                        # if inv_lines:
+                        #     codes = inv_lines.mapped('product_id.d394_id')
+                        #     op11 = []
+                        #     if (partner_type == '1' and new_oper_type in (
+                        #         'V', 'C')) or (partner_type == '2' and
+                        #                        new_oper_type == 'N'):
+                        #         for code in codes:
+                        #             new_code = code
+                        #             if code.parent_id:
+                        #                 new_code = code.parent_id
+                        #             cod_lines = []
+                        #             if partner_type == '1':
+                        #                 cod_lines = [
+                        #                     line for line in
+                        #                     inv_lines.filtered(
+                        #                         lambda r:
+                        #                         r.product_id.d394_id.id ==
+                        #                         code.id and
+                        #                         new_code.name <= '31')
+                        #                 ]
+                        #             else:
+                        #                 cod_lines = [
+                        #                     line for line in
+                        #                     inv_lines.filtered(
+                        #                         lambda r:
+                        #                         r.product_id.d394_id.id ==
+                        #                         code.id)
+                        #                 ]
+                        #             if cod_lines:
+                        #                 nrFact = len(set([
+                        #                     line.invoice_id.id for line in
+                        #                     inv_lines.filtered(
+                        #                         lambda r:
+                        #                         r.product_id.d394_id.id ==
+                        #                         code.id)]))
+                        #                 baza1 = 0
+                        #                 taxes1 = 0
+                        #                 for line in cod_lines:
+                        #                     inv_curr = \
+                        #                         line.invoice_id.currency_id
+                        #                     inv_date = \
+                        #                         line.invoice_id.date_invoice
+                        #                     baza1 += inv_curr.with_context(
+                        #                         {'date': inv_date}).compute(
+                        #                         line.price_subtotal,
+                        #                         comp_curr)
+                        #                     new_taxes = inv_curr.with_context(
+                        #                         {'date': inv_date}).compute(
+                        #                         line.price_normal_taxes and
+                        #                         line.price_normal_taxes or
+                        #                         line.price_taxes,
+                        #                         comp_curr)
+                        #                     if new_oper_type == 'C':
+                        #                         taxes1 += new_taxes
+                        #                 op11_dict = {
+                        #                     'codPR': code.name,
+                        #                     'nrFactPR': nrFact,
+                        #                     'bazaPR': int(round(baza1))
+                        #                 }
+                        #                 if new_oper_type in (
+                        #                     'A', 'L', 'C', 'AI'):
+                        #                     op11_dict['tvaPR'] = \
+                        #                         int(round(taxes1))
+                        #                 op11.append(op11_dict)
+                        #     new_dict['op11'] = op11
+                        #     op1 = adauga_op1(op1, new_dict)
         return op1
 
     def _get_op2(self, invoices):
