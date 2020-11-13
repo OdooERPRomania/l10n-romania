@@ -9,6 +9,7 @@ from lxml import etree
 
 from odoo import _, api, fields, models
 from odoo.tools import xml_utils
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -44,12 +45,26 @@ class AnafMixin(models.AbstractModel):
     )
     bank_account_id = fields.Many2one("res.partner.bank", string="Bank Account")
 
-    date_range_id = fields.Many2one(comodel_name="date.range", string="Date range")
+    date_range_id = fields.Many2one(
+        comodel_name="date.range", string="Date range",
+        domain="['|',('company_id','=',company_id)," "('company_id','=',False)]",
+    )
     date_from = fields.Date("Start Date", required=True, default=_get_default_date_from)
     date_to = fields.Date("End Date", required=True, default=_get_default_date_to)
     date_next = fields.Date("Next Date", compute="_compute_next_date")
     name = fields.Char("File Name", compute="_compute_anaf_filename", default="")
     file_save = fields.Binary(string="Report File", readonly=True)
+
+    @api.constrains("date_from", "date_to")
+    def _check_dates(self):
+        for fy in self:
+            # Starting date must be prior to the ending date
+            date_from = fy.date_from
+            date_to = fy.date_to
+            if date_to < date_from:
+                raise ValidationError(
+                    _("The ending date must not be prior to the starting " "date.")
+                )
 
     @api.onchange("declaration_id")
     def _onchange_declaration_id(self):
@@ -94,6 +109,20 @@ class AnafMixin(models.AbstractModel):
         )
 
     @api.model
+    def get_period_invoices_by_tags(self, types, tags):
+        invoices = self.env["account.move.line"].search(
+            [
+                ("move_id.state", "=", "posted"),
+                ("move_id.move_type", "in", types),
+                ("move_id.invoice_date", ">=", self.date_from),
+                ("move_id.invoice_date", "<=", self.date_to),
+                ("move_id.company_id", "=", self.company_id.id),
+                ("tax_tag_ids", "in", tags),
+            ],
+        ).mapped("move_id")
+        return invoices.sorted(key=lambda r: r.invoice_date)
+
+    @api.model
     def get_period_invoices(self, types):
         invoices = self.env["account.move"].search(
             [
@@ -102,13 +131,18 @@ class AnafMixin(models.AbstractModel):
                 ("invoice_date", ">=", self.date_from),
                 ("invoice_date", "<=", self.date_to),
                 ("company_id", "=", self.company_id.id),
-            ]
+            ], order='invoice_date, name, ref',
         )
         return invoices
 
     @api.model
     def get_period_vatp_invoices(self, types):
         fp = self.company_id.property_vat_on_payment_position_id
+        if not fp:
+            fp = self.env['account.fiscal.position'].search(
+                [('company_id', '=', self.company_id.id),
+                 ('name', '=', 'Regim TVA la Incasare')]
+            )
         invoices = self.env["account.move"]
         if fp:
             vatp_invoices = self.env["account.move"].search(
@@ -136,6 +170,57 @@ class AnafMixin(models.AbstractModel):
     def value_to_string(self, value):
         return '"' + str(value) + '"'
 
+    @api.model
+    def _get_tax_report_domain(self, company_id, date_from, date_to):
+        domain = [
+            ("company_id", "=", company_id),
+            ("date", ">=", date_from),
+            ("date", "<=", date_to),
+            ("tax_exigible", "=", True),
+            ("tax_tag_ids", "!=", False),
+            ("move_id.state", "=", "posted"),
+        ]
+        if self.env.context.get('move_id', False):
+            domain += [('move_id.id', '=', self.env.context['move_id'])]
+        return domain
+
+    def _get_vat_report_data(self, company_id, date_from, date_to):
+        mv_line_obj = self.env["account.move.line"]
+        vat_report = {}
+        tax_domain = self._get_tax_report_domain(company_id, date_from, date_to)
+        tax_move_lines = mv_line_obj.search(tax_domain)
+        for record in tax_move_lines:
+            for tag in record.tax_tag_ids:
+                if record.move_id.tax_cash_basis_rec_id:
+                    # Cash basis entries are always treated as misc operations, applying the tag sign directly to the balance
+                    type_multiplicator = 1
+                    if record.tax_ids and record.tax_ids[0].type_tax_use == "sale":
+                        type_multiplicator = -1
+                else:
+                    type_multiplicator = (
+                        record.journal_id.type == "sale" and -1 or 1
+                    ) * (
+                        mv_line_obj._get_refund_tax_audit_condition(record) and -1 or 1
+                    )
+
+                tag_amount = (
+                    type_multiplicator * record.balance
+                )
+                if tag.tax_report_line_ids:
+                    # Then, the tag comes from a report line, and hence has a + or - sign (also in its name)
+                    for report_line in tag.tax_report_line_ids:
+                        tag_id = report_line.tag_name
+                        if tag_id not in vat_report.keys():
+                            vat_report[tag_id] = 0.0
+                        vat_report[tag_id] += tag_amount
+                else:
+                    # Then, it's a financial tag (sign is always +, and never shown in tag name)
+                    tag_id = tag.name
+                    if tag_id not in vat_report.keys():
+                        vat_report[tag_id] = 0.0
+                    vat_report[tag_id] += tag_amount
+        return vat_report
+
     def get_report(self):
         model = self.version_id.model
         validator = self.version_id.validator
@@ -152,6 +237,7 @@ class AnafMixin(models.AbstractModel):
         xmlfile = declaration.build_file().encode("utf-8")
         parser = etree.XMLParser(ns_clean=True, recover=True, encoding="utf-8")
         h = etree.fromstring(xmlfile, parser=parser)
+        _logger.warning(h)
         if validator:
             xml_utils._check_with_xsd(h, validator.name, self.env)
         self.file_save = base64.encodebytes(xmlfile)

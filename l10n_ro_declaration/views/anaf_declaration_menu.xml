@@ -5,9 +5,4 @@
         name="ANAF Configuration"
         parent="account.account_management_menu"
     />
-    <menuitem
-        id="l10n_ro_declaration.menu_declaration"
-        name="ANAF Declaration"
-        parent="account.menu_finance_reports"
-    />
 </odoo>

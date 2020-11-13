@@ -35,8 +35,8 @@ class AccountMove(models.Model):
         self.ensure_one()
         check = False
         for line in self.invoice_line_ids:
-            for tax_line in line.tax_ids:
-                if any(i in tax_line.name for i in (' 9', ' 5')):
+            for tag_id in line.tax_tag_ids:
+                if tag_id.name == "scutit" or tag_id.name == "scutit1":
                     check = True
         return check
 

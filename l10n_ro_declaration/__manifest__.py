@@ -17,6 +17,7 @@
     "data": [
         "data/res.country.state.csv",
         "data/anaf_product_code.xml",
+        "views/account_move_view.xml",
         "views/anaf_declaration_menu.xml",
         "views/anaf_declaration_view.xml",
         "views/anaf_product_code_view.xml",

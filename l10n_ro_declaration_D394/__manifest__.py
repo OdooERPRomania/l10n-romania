@@ -18,6 +18,10 @@
         "views/d394_declaration_view.xml",
        # "views/anaf_declaration_view.xml",
        # "views/anaf_signature_view.xml",
+
        "security/ir.model.access.csv",
+
+      #"security/ir.model.access.csv",
+
     ],
 }
