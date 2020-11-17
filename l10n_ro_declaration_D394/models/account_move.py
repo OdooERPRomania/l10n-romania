@@ -91,7 +91,7 @@ class AccountMove(models.Model):
                 else:
                     oper_type = "L"
             else:
-                if not partner.is_company and inv.invoice_origin:
+                if not partner.is_company :
                     oper_type = "N"
                 elif inv.fiscal_position_id and (
                     ("Taxare Inversa" in inv.fiscal_position_id.name)
