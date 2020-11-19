@@ -4,9 +4,9 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import re
-
-from odoo import fields, models
-
+import logging
+from odoo import fields, models, api
+_logger = logging.getLogger(__name__)
 OPERATION_TYPE = [
     ("L", "Customer Invoice"),
     ("A", "Supplier Invoice"),
@@ -22,7 +22,10 @@ SEQUENCE_TYPE = [
     ("autoinv1", "Customer Auto Invoicing"),
     ("autoinv2", "Supplier  Auto Invoicing"),
 ]
+class product_product(models.Model):
+    _inherit = "product.product"
 
+    d394_id = fields.Many2one('report.394.code', string='D394 codes')
 
 class AccountMove(models.Model):
     _inherit = "account.move"
@@ -32,8 +35,8 @@ class AccountMove(models.Model):
         self.ensure_one()
         check = False
         for line in self.invoice_line_ids:
-            for tax_line in line.tax_ids:
-                if any(i in tax_line.name for i in (' 9', ' 5')):
+            for tag_id in line.tax_tag_ids:
+                if tag_id.name == "scutit" or tag_id.name == "scutit1":
                     check = True
         return check
 
@@ -64,17 +67,20 @@ class AccountMove(models.Model):
                     )
         return True
 
+    @api.depends('fiscal_position_id','partner_id')
     def _get_operation_type(self):
         for inv in self:
+            _logger.warning("XXXXXX")
             partner = inv.partner_id
             country_ro = self.env.ref("base.ro")
             if inv.move_type in ("out_invoice", "out_refund"):
+                _logger.warning(inv.fiscal_position_id.name)
                 if inv.fiscal_position_id and (
                     "Taxare Inversa" in inv.fiscal_position_id.name
                 ):
                     oper_type = "V"
                 elif not inv.fiscal_position_id or (
-                    inv.fiscal_position_id and ("National" in inv.fiscal_position_id.name)
+                    inv.fiscal_position_id and ("Regim National (TVA)" in inv.fiscal_position_id.name)
                 ):
                     if inv._check_special_taxes():
                         oper_type = "LS"
@@ -85,7 +91,7 @@ class AccountMove(models.Model):
                 else:
                     oper_type = "L"
             else:
-                if not partner.is_company and inv.invoice_origin:
+                if not partner.is_company :
                     oper_type = "N"
                 elif inv.fiscal_position_id and (
                     ("Taxare Inversa" in inv.fiscal_position_id.name)
@@ -116,6 +122,7 @@ class AccountMove(models.Model):
             inv.operation_type = oper_type
         return True
 
+    @api.depends('partner_id')
     def _get_partner_type(self):
         for inv in self:
             partner = inv.partner_id

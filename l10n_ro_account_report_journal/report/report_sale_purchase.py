@@ -16,7 +16,7 @@ class SaleJournalReport(models.TransientModel):
     _description = "Report Sale Purchase Journal"
 
     @api.model
-    def _get_report_values(self, docids, data=None):
+    def _get_report_values(self, docids=None, data=None):
         journal_type = data["form"]["journal_type"]
         anaf = self.env["l10n.ro.account.report.journal"].browse(data["form"]["anaf"])
         types = []

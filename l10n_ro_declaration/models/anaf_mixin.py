@@ -11,7 +11,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools import xml_utils
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class AnafMixin(models.AbstractModel):
@@ -230,6 +230,7 @@ class AnafMixin(models.AbstractModel):
     def get_report(self):
         model = self.version_id.model
         validator = self.version_id.validator
+        _logger.warning(model.model)
         declaration = self.env[model.model].create(
             {
                 "company_id": self.company_id.id,
@@ -242,6 +243,7 @@ class AnafMixin(models.AbstractModel):
         xmlfile = declaration.build_file().encode("utf-8")
         parser = etree.XMLParser(ns_clean=True, recover=True, encoding="utf-8")
         h = etree.fromstring(xmlfile, parser=parser)
+        _logger.warning(h)
         if validator:
             xml_utils._check_with_xsd(h, validator.name, self.env)
         self.file_save = base64.encodebytes(xmlfile)
