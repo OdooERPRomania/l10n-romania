@@ -8,8 +8,8 @@ from dateutil.relativedelta import relativedelta
 from lxml import etree
 
 from odoo import _, api, fields, models
-from odoo.tools import xml_utils
 from odoo.exceptions import ValidationError
+from odoo.tools import xml_utils
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,8 @@ class AnafMixin(models.AbstractModel):
     bank_account_id = fields.Many2one("res.partner.bank", string="Bank Account")
 
     date_range_id = fields.Many2one(
-        comodel_name="date.range", string="Date range",
+        comodel_name="date.range",
+        string="Date range",
         domain="['|',('company_id','=',company_id)," "('company_id','=',False)]",
     )
     date_from = fields.Date("Start Date", required=True, default=_get_default_date_from)
@@ -110,16 +111,20 @@ class AnafMixin(models.AbstractModel):
 
     @api.model
     def get_period_invoices_by_tags(self, types, tags):
-        invoices = self.env["account.move.line"].search(
-            [
-                ("move_id.state", "=", "posted"),
-                ("move_id.move_type", "in", types),
-                ("move_id.invoice_date", ">=", self.date_from),
-                ("move_id.invoice_date", "<=", self.date_to),
-                ("move_id.company_id", "=", self.company_id.id),
-                ("tax_tag_ids", "in", tags),
-            ],
-        ).mapped("move_id")
+        invoices = (
+            self.env["account.move.line"]
+            .search(
+                [
+                    ("move_id.state", "=", "posted"),
+                    ("move_id.move_type", "in", types),
+                    ("move_id.invoice_date", ">=", self.date_from),
+                    ("move_id.invoice_date", "<=", self.date_to),
+                    ("move_id.company_id", "=", self.company_id.id),
+                    ("tax_tag_ids", "in", tags),
+                ],
+            )
+            .mapped("move_id")
+        )
         return invoices.sorted(key=lambda r: r.invoice_date)
 
     @api.model
@@ -131,7 +136,8 @@ class AnafMixin(models.AbstractModel):
                 ("invoice_date", ">=", self.date_from),
                 ("invoice_date", "<=", self.date_to),
                 ("company_id", "=", self.company_id.id),
-            ], order='invoice_date, name, ref',
+            ],
+            order="invoice_date, name, ref",
         )
         return invoices
 
@@ -139,9 +145,11 @@ class AnafMixin(models.AbstractModel):
     def get_period_vatp_invoices(self, types):
         fp = self.company_id.property_vat_on_payment_position_id
         if not fp:
-            fp = self.env['account.fiscal.position'].search(
-                [('company_id', '=', self.company_id.id),
-                 ('name', '=', 'Regim TVA la Incasare')]
+            fp = self.env["account.fiscal.position"].search(
+                [
+                    ("company_id", "=", self.company_id.id),
+                    ("name", "=", "Regim TVA la Incasare"),
+                ]
             )
         invoices = self.env["account.move"]
         if fp:
@@ -180,8 +188,8 @@ class AnafMixin(models.AbstractModel):
             ("tax_tag_ids", "!=", False),
             ("move_id.state", "=", "posted"),
         ]
-        if self.env.context.get('move_id', False):
-            domain += [('move_id.id', '=', self.env.context['move_id'])]
+        if self.env.context.get("move_id", False):
+            domain += [("move_id.id", "=", self.env.context["move_id"])]
         return domain
 
     def _get_vat_report_data(self, company_id, date_from, date_to):
@@ -203,9 +211,7 @@ class AnafMixin(models.AbstractModel):
                         mv_line_obj._get_refund_tax_audit_condition(record) and -1 or 1
                     )
 
-                tag_amount = (
-                    type_multiplicator * record.balance
-                )
+                tag_amount = type_multiplicator * record.balance
                 if tag.tax_report_line_ids:
                     # Then, the tag comes from a report line, and hence has a + or - sign (also in its name)
                     for report_line in tag.tax_report_line_ids:
