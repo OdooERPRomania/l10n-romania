@@ -87,6 +87,8 @@ class AnafMixin(models.AbstractModel):
         months = r.months + 12 * r.years + 1
         return months
 
+
+
     @api.model
     def get_year_month(self):
         year = month = ""

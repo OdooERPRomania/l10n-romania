@@ -4,6 +4,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 import logging
 import re
+import datetime
 from odoo import fields, models
 
 
@@ -66,9 +67,9 @@ class Declaratie394(models.TransientModel):
             "prsAfiliat": int(self.prsAfiliat),
             'informatii': None,
             'rezumat1': self._generate_rezumat1(invoices,None,op1,op2),
-            'rezumat2': None,
-            'serieFacturi': None,
-            'lista': [],
+            'rezumat2': self._generate_rezumat2(recipes, None, op1, op2),
+           # 'serieFacturi': self._get_inv_series(),
+            'lista': self._generate_lista(),
             'facturi': self.generate_facturi(),
             'op1': op1,
             'op2': op2
@@ -202,6 +203,37 @@ class Declaratie394(models.TransientModel):
                     })
                 facturi.append(new_dict)
         return facturi
+
+    def get_months_period(self):
+        month_end = fields.Date.from_string(self.date_to).month
+        month_star = fields.Date.from_string(self.date_from).month
+        year_end = fields.Date.from_string(self.date_to).year
+        year_start = fields.Date.from_string(self.date_from).year
+        if year_end == year_start:
+            months = [(m, year_start) for m in range(month_star, month_end + 1)]
+        else:
+            months = [(m, year_start) for m in range(month_star, 13)]
+            months.extend([(m, year_end) for m in range(1, month_end + 1)])
+        return months
+
+    def get_montly_invoices_by_tags(self, types, tags):
+        invoice_montly = []
+        months_year = self.get_months_period()
+        for month, year in months_year:
+            invoices = (
+                self.env["account.move.line"]
+                    .search(
+                    [
+                        ("move_id.state", "=", "posted"),
+                        ("move_id.move_type", "in", types),
+                        ("move_id.invoice_date", ">=", datetime.datetime(year, month, 1)),
+                        ("move_id.invoice_date", "<", datetime.datetime(year, month + 1, 1)),
+                        ("move_id.company_id", "=", self.company_id.id),
+                        ("tax_tag_ids", "in", tags),
+                    ]).mapped("move_id"))
+            invoices.sorted(key=lambda r: r.invoice_date)
+            invoice_montly.append(invoices)
+        return invoice_montly
 
     def _get_op1(self, invoices):
         def compute_invoice_taxes_ammount(invoices):
@@ -1126,3 +1158,341 @@ class Declaratie394(models.TransientModel):
                         rez_detaliu.append(val)
         rezumat1['detaliu'] = rez_detaliu
         return rezumat1
+
+    def _get_inv_lines(self, invoices, sel_cota, domain):
+        obj_inv_line = self.env['account.move.line']
+        inv_lines = False
+        if invoices:
+            invs = invoices.filtered(lambda r: domain)
+            domain = [('move_id', 'in', invs.ids)]
+            inv_lines = obj_inv_line.search(domain)
+            cotas = []
+            for inv_line in inv_lines:
+                cotas += [tax for tax in inv_line.tax_ids]
+            filtered_inv_lines = []
+            cota_amount = 0
+            for cota in cotas:
+                cota_inv = inv_lines.filtered(
+                    lambda r: cota.id in r.tax_ids.ids)
+                cota_amount = 0
+                if cota.amount_type == 'percent':
+                    if cota.children_tax_ids:
+                        cota_amount = int(abs(cota.children_tax_ids[0].amount) * 100)
+                    else:
+                        cota_amount = int(cota.amount * 100)
+                elif cota.amount_type == 'amount':
+                    cota_amount = int(cota.amount)
+                if cota_amount == sel_cota:
+                    filtered_inv_lines = []
+                    for inv_line in inv_lines:
+                        tax = inv_line.invoice_line_tax_id
+                        if cota.id in tax.ids:
+                            filtered_inv_lines.append(inv_line.id)
+            inv_lines = obj_inv_line.browse(filtered_inv_lines)
+        return inv_lines
+
+    def generate_rezumat2(self, sel_cota, invoices, op1s, op2):
+        self.ensure_one()
+        obj_inv = self.env['account.move']
+        obj_inv_line = self.env['account.move.line']
+        rezumat2 = {}
+        if op1s:
+            oper_type = op1s[0]['tip']
+            cota_amount = int(op1s[0]['cota'])
+            rezumat2['cota'] = op1s[0]['cota']
+            # To review
+            rezumat2['bazaFSLcod'] = 0
+            rezumat2['TVAFSLcod'] = 0
+            rezumat2['bazaFSL'] = 0
+            rezumat2['TVAFSL'] = 0
+            rezumat2['bazaFSA'] = 0
+            rezumat2['TVAFSA'] = 0
+            rezumat2['bazaFSAI'] = 0
+            rezumat2['TVAFSAI'] = 0
+
+            rezumat2['bazaBFAI'] = 0
+            rezumat2['TVABFAI'] = 0
+
+            rezumat2['bazaL_PF'] = 0
+            rezumat2['tvaL_PF'] = 0
+
+            fr_inv = domain = "r.operation_type == 'L' and \
+                r.fiscal_receipt is True"
+            inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
+            if inv_lines:
+                rezumat2['bazaBFAI'] = int(round(sum(
+                    line.price_subtotal for line in inv_lines if
+                    not line.invoice_id.journal_id.fiscal_receipt)))
+                rezumat2['TVABFAI'] = int(round(sum(
+                    line.price_normal_taxes and
+                    line.price_normal_taxes or line.price_taxes
+                    for line in inv_lines if
+                    not line.invoice_id.journal_id.fiscal_receipt)))
+            rezumat2['nrFacturiL'] = int(round(sum(
+                op['nrFact'] for op in op1s if op['tip'] == 'L')))
+            rezumat2['bazaL'] = int(round(sum(
+                op['baza'] for op in op1s if op['tip'] == 'L')))
+            rezumat2['tvaL'] = int(round(sum(
+                op['tva'] for op in op1s if op['tip'] == 'L')))
+            rezumat2['nrFacturiA'] = int(round(sum(
+                op['nrFact'] for op in op1s if op['tip'] in ('A', 'C'))))
+            rezumat2['bazaA'] = int(round(sum(
+                op['baza'] for op in op1s if op['tip'] in ('A', 'C'))))
+            rezumat2['tvaA'] = int(round(sum(
+                op['tva'] for op in op1s if op['tip'] in ('A', 'C'))))
+            rezumat2['nrFacturiAI'] = int(round(sum(
+                op['nrFact'] for op in op1s if op['tip'] == 'AI')))
+            rezumat2['bazaAI'] = int(round(sum(
+                op['baza'] for op in op1s if op['tip'] == 'AI')))
+            rezumat2['tvaAI'] = int(round(sum(
+                op['tva'] for op in op1s if op['tip'] == 'AI')))
+            if cota_amount == 5:
+                rezumat2['baza_incasari_i1'] = int(round(sum(
+                    x['baza5'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['tva_incasari_i1'] = int(round(sum(
+                    x['TVA5'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['baza_incasari_i2'] = int(round(sum(
+                    x['baza5'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+                rezumat2['tva_incasari_i2'] = int(round(sum(
+                    x['TVA5'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+            if cota_amount == 9:
+                rezumat2['baza_incasari_i1'] = int(round(sum(
+                    x['baza9'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['tva_incasari_i1'] = int(round(sum(
+                    x['TVA9'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['baza_incasari_i2'] = int(round(sum(
+                    x['baza9'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+                rezumat2['tva_incasari_i2'] = int(round(sum(
+                    x['TVA9'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+            if cota_amount == 19:
+                rezumat2['baza_incasari_i1'] = int(round(sum(
+                    x['baza19'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['tva_incasari_i1'] = int(round(sum(
+                    x['TVA19'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['baza_incasari_i2'] = int(round(sum(
+                    x['baza19'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+                rezumat2['tva_incasari_i2'] = int(round(sum(
+                    x['TVA19'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+            if cota_amount == 20:
+                rezumat2['baza_incasari_i1'] = int(round(sum(
+                    x['baza20'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['tva_incasari_i1'] = int(round(sum(
+                    x['TVA20'] for x in op2 if
+                    x['tip_op2'] == 'I1')))
+                rezumat2['baza_incasari_i2'] = int(round(sum(
+                    x['baza20'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+                rezumat2['tva_incasari_i2'] = int(round(sum(
+                    x['TVA20'] for x in op2 if
+                    x['tip_op2'] == 'I2')))
+            domain = "r.operation_type == 'L' and \
+                r.partner_type == '2' and r.amount_total <= 10000"
+            inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
+        else:
+            rezumat2['cota'] = sel_cota
+            rezumat2['bazaFSLcod'] = 0
+            rezumat2['TVAFSLcod'] = 0
+            rezumat2['bazaFSL'] = 0
+            rezumat2['TVAFSL'] = 0
+            rezumat2['bazaFSA'] = 0
+            rezumat2['TVAFSA'] = 0
+            rezumat2['bazaFSAI'] = 0
+            rezumat2['TVAFSAI'] = 0
+            rezumat2['bazaBFAI'] = 0
+            rezumat2['TVABFAI'] = 0
+            rezumat2['nrFacturiL'] = 0
+            rezumat2['bazaL'] = 0
+            rezumat2['tvaL'] = 0
+            rezumat2['nrFacturiA'] = 0
+            rezumat2['bazaA'] = 0
+            rezumat2['tvaA'] = 0
+            rezumat2['nrFacturiAI'] = 0
+            rezumat2['bazaAI'] = 0
+            rezumat2['tvaAI'] = 0
+            rezumat2['baza_incasari_i1'] = 0
+            rezumat2['tva_incasari_i1'] = 0
+            rezumat2['baza_incasari_i2'] = 0
+            rezumat2['tva_incasari_i2'] = 0
+            rezumat2['bazaL_PF'] = 0
+            rezumat2['tvaL_PF'] = 0
+        return rezumat2
+
+    def _generate_rezumat2(self, invoices, payments, op1, op2):
+        self.ensure_one()
+        rezumat2 = []
+        cotas = set([x['cota'] for x in op1 if
+                     x['cota'] != 0] + [5, 9, 19, 20])
+        for cota in cotas:
+            op1s = [x for x in op1 if x['cota'] == cota]
+            rezumat2.append(self.generate_rezumat2(cota, invoices, op1s, op2))
+        return rezumat2
+
+
+    def _generate_lista(self):
+        self.ensure_one()
+        obj_tax = self.env['account.tax']
+        obj_invoice = self.env['account.move']
+        obj_inv_line = self.env['account.move.line']
+        comp_curr = self.company_id.currency_id
+        caens = ['1071', '4520', '4730', '47761', '47762', '4932', '55101',
+                 '55102', '55103', '5630', '0812', '9313', '9602', '9603']
+        lista = []
+        invoices = obj_invoice.search([
+            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('state', 'in', ['open', 'paid']),
+
+            ('invoice_date', '>=', self.date_from),
+            ('invoice_date', '<=', self.date_to),
+            ('move_type', '!=', 'out_receipt'),
+            '|',
+            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.company_id.child_ids.ids)
+        ])
+
+        companies = set(invoices.mapped('company_id.id'))
+        for company in self.env['res.company'].browse(companies):
+            if company.codcaen.code.zfill(4) in caens:
+                comp_inv = invoices.filtered(
+                    lambda r: r.company_id.id == company.id)
+                cotas = []
+                for invoice in comp_inv:
+                    cotas += set([tax.id for tax in invoice.tax_ids])
+                cotas = set(cotas)
+                for cota in obj_tax.browse(cotas):
+                    cota_amount = 0
+                    if cota.type == 'percent':
+                        if cota.child_ids:
+                            cota_amount = int(
+                                abs(cota.child_ids[0].amount) * 100)
+                        else:
+                            cota_amount = int(cota.amount * 100)
+                    elif cota.type == 'amount':
+                        cota_amount = int(cota.amount)
+                    cota_inv = comp_inv.filtered(
+                        lambda r: cota.id in r.tax_ids.ids)
+                    inv_lines = obj_inv_line.search([
+                        ('invoice_id', 'in', cota_inv.ids)])
+                    bazab = bazas = tvab = tvas = 0
+                    for line in inv_lines:
+                        inv_curr = line.invoice_id.currency_id
+                        inv_date = line.invoice_id.date_invoice
+                        if line.product_id.type in ('product', 'consumables'):
+                            bazab += inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_subtotal, comp_curr)
+                            tvab += inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_normal_taxes and
+                                line.price_normal_taxes or
+                                line.price_taxes, comp_curr)
+                        else:
+                            bazas += inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_subtotal, comp_curr)
+                            tvas += inv_curr.with_context(
+                                {'date': inv_date}).compute(
+                                line.price_normal_taxes and
+                                line.price_normal_taxes or
+                                line.price_taxes, comp_curr)
+                    if bazab != 0:
+                        bdict = {
+                            'caen': company.codcaen.code.zfill(4),
+                            'cota': cota_amount,
+                            'operat': 1,
+                            'valoare': int(round(bazab)),
+                            'tva': int(round(tvab))
+                        }
+                        lista.append(bdict)
+                    if bazas != 0:
+                        sdict = {
+                            'caen': company.codcaen.code.zfill(4),
+                            'cota': cota_amount,
+                            'operat': 2,
+                            'valoare': int(round(bazas)),
+                            'tva': int(round(tvas))
+                        }
+                        lista.append(sdict)
+        return lista
+
+    def _get_inv_series(self):
+        self.ensure_one()
+        if fields.Date.from_string(self.date_to) < \
+            fields.Date.from_string('2016-10-01'):
+            return []
+        obj_seq = self.env['ir.sequence']
+        obj_invoice = self.env['account.move']
+        regex = re.compile('[^a-zA-Z]')
+        ctx = self._context.copy()
+        year, month = self.get_year_month()
+        ctx['fiscalyear_id'] = year
+        invoices = obj_invoice.search([
+            ('state', '!=', 'draft'),
+            ('date_invoice', '>=', self.date_from),
+            ('date_invoice', '<=', self.date_to),
+            '|',
+            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.company_id.child_ids.ids),
+            '|',
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('journal_id.sequence_type', 'in', ('autoinv1', 'autoinv2'))
+        ])
+        seq_ids = set(invoices.mapped('journal_id.sequence_id.id'))
+        sequences = obj_seq.browse(seq_ids)
+        seq_dict = []
+        for sequence in sequences:
+            serie = sequence._interpolate(
+                sequence.prefix,
+                sequence.with_context(ctx)._interpolation_dict_context())
+            nr_init = sequence.number_first
+            nr_last = sequence.number_last
+            for line in sequence.fiscal_ids:
+                if line.fiscalyear_id.id == self.period_id.fiscalyear_id.id:
+                    nr_init = line.sequence_id.number_first
+                    nr_last = line.sequence_id.number_last
+            partner = sequence.partner_id
+            tip = 1
+            if sequence.sequence_type == 'autoinv1':
+                tip = 3
+            elif sequence.sequence_type != 'normal':
+                tip = 4
+            seq = {
+                'tip': tip,
+                'serieI': regex.sub('', serie),
+                'nrI': str(nr_init),
+                'nrF': str(nr_last)
+            }
+            if partner:
+                seq['den'] = partner.name
+                seq['cui'] = partner._split_vat(
+                    partner.vat)[1]
+            if tip == 1:
+                seq_dict.append(seq)
+            seq1 = seq.copy()
+            if sequence.sequence_type == 'normal':
+                tip = 2
+            elif sequence.sequence_type == 'autoinv1':
+                tip = 3
+            else:
+                tip = 4
+            inv = invoices.filtered(
+                lambda r:
+                r.journal_id.sequence_id.id == sequence.id).sorted(
+                key=lambda k: k.inv_number)
+            seq1['tip'] = tip
+            seq1['nrI'] = inv[0].inv_number
+            seq1['nrF'] = inv[-1].inv_number
+            seq_dict.append(seq1)
+        return seq_dict
