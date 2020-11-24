@@ -57,6 +57,7 @@ class Declaratie394(models.TransientModel):
 
         op1 = self._get_op1(invoices)
         op2 = self._get_op2(recipes)
+        payments = self._get_payments()
 
         xmldict = {
             "luna": month,
@@ -65,10 +66,10 @@ class Declaratie394(models.TransientModel):
             "optiune": int(self.optiune),
             "schimb_optiune": int(self.schimb_optiune),
             "prsAfiliat": int(self.prsAfiliat),
-            'informatii': None,
-            'rezumat1': self._generate_rezumat1(invoices,None,op1,op2),
-            'rezumat2': self._generate_rezumat2(recipes, None, op1, op2),
-           # 'serieFacturi': self._get_inv_series(),
+            'informatii': self._generate_informatii(invoices, payments, op1, op2),
+            'rezumat1': self._generate_rezumat1(invoices,payments,op1,op2),
+            'rezumat2': self._generate_rezumat2(recipes, payments, op1, op2),
+            #'serieFacturi': self._get_inv_series(),
             'lista': self._generate_lista(),
             'facturi': self.generate_facturi(),
             'op1': op1,
@@ -234,6 +235,106 @@ class Declaratie394(models.TransientModel):
             invoices.sorted(key=lambda r: r.invoice_date)
             invoice_montly.append(invoices)
         return invoice_montly
+
+    def _get_payments(self):
+        invoice_obj = self.env['account.move']
+
+        company = self.company_id
+        comp_curr = company.currency_id
+        payments = []
+        where = [
+            ('state', 'in', ['open', 'paid']),
+            ('invoice_date', '<=', self.date_to),
+            '|',
+            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.company_id.child_ids.ids)
+        ]
+        invoices = invoice_obj.search(where,
+                                      order="move_type desc, invoice_date")
+        for inv1 in invoices:
+            ctx = {'date': inv1.invoice_date}
+            if inv1.payment_ids:
+                for payment in inv1.payment_ids:
+                    if payment.date <= self.date_to:
+                        pay = {}
+                        pay['type'] = inv1.move_type
+                        pay['vat_on_payment'] = inv1.vat_on_payment
+                        pay['base_24'] = pay['base_20'] = pay['base_19'] = 0.00
+                        pay['base_9'] = pay['base_5'] = 0.00
+                        pay['tva_24'] = pay['tva_20'] = pay['tva_19'] = 0.00
+                        pay['tva_9'] = pay['tva_5'] = 0.00
+                        for line in payment.move_id.line_id:
+                            if ('4427' in line.account_id.code) or \
+                                    ('4426' in line.account_id.code):
+                                if line.tax_code_id and \
+                                        ' 24' in line.tax_code_id.name:
+                                    pay['base_24'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit) / 0.24,
+                                                         comp_curr)
+                                    pay['tva_24'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit),
+                                                         comp_curr)
+                                if line.tax_code_id and \
+                                        ' 20' in line.tax_code_id.name:
+                                    pay['base_20'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit) / 0.20,
+                                                         comp_curr)
+                                    pay['tva_20'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit),
+                                                         comp_curr)
+                                if line.tax_code_id and \
+                                        ' 19' in line.tax_code_id.name:
+                                    pay['base_19'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit) / 0.09,
+                                                         comp_curr)
+                                    pay['tva_19'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit),
+                                                         comp_curr)
+                                if line.tax_code_id and \
+                                        ' 9' in line.tax_code_id.name:
+                                    pay['base_9'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit) / 0.09,
+                                                         comp_curr)
+                                    pay['tva_9'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit),
+                                                         comp_curr)
+                                if line.tax_code_id and \
+                                        ' 5' in line.tax_code_id.name:
+                                    pay['base_5'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit) / 0.05,
+                                                         comp_curr)
+                                    pay['tva_5'] += \
+                                        inv1.currency_id.with_context(
+                                            ctx).compute((line.credit or
+                                                          line.debit),
+                                                         comp_curr)
+                        for field in ('base_24', 'base_20', 'base_19',
+                                      'base_9', 'base_5',
+                                      'tva_24', 'tva_20', 'tva_19',
+                                      'tva_9', 'tva_5'):
+                            pay[field] = int(round(pay[field]))
+                        payments.append(pay)
+            _logger.warning("PPPXXXPPPP")
+            _logger.warning(payments)
+        return payments
 
     def _get_op1(self, invoices):
         def compute_invoice_taxes_ammount(invoices):
@@ -1440,8 +1541,8 @@ class Declaratie394(models.TransientModel):
         ctx['fiscalyear_id'] = year
         invoices = obj_invoice.search([
             ('state', '!=', 'draft'),
-            ('date_invoice', '>=', self.date_from),
-            ('date_invoice', '<=', self.date_to),
+            ('invoice_date', '>=', self.date_from),
+            ('invoice_date', '<=', self.date_to),
             '|',
             ('company_id', '=', self.company_id.id),
             ('company_id', 'in', self.company_id.child_ids.ids),
@@ -1449,8 +1550,12 @@ class Declaratie394(models.TransientModel):
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('journal_id.sequence_type', 'in', ('autoinv1', 'autoinv2'))
         ])
-        seq_ids = set(invoices.mapped('journal_id.sequence_id.id'))
+        _logger.warning("\\\\\\SSSS||||\\\\")
+
+        seq_ids = set(invoices.mapped('journal_id.code'))
+        _logger.warning(seq_ids)
         sequences = obj_seq.browse(seq_ids)
+        _logger.warning(sequences)
         seq_dict = []
         for sequence in sequences:
             serie = sequence._interpolate(
@@ -1496,3 +1601,149 @@ class Declaratie394(models.TransientModel):
             seq1['nrF'] = inv[-1].inv_number
             seq_dict.append(seq1)
         return seq_dict
+
+    def _generate_informatii(self, invoices, payments, op1, op2):
+        informatii = {}
+        informatii['nrCui1'] = len(
+            set(op['cuiP'] for op in op1 if op['tip_partener'] == '1'))
+        informatii['nrCui2'] = len(
+            [op for op in op1 if op['tip_partener'] == '2'])
+        informatii['nrCui3'] = len(
+            set(op['cuiP'] for op in op1 if op['tip_partener'] == '3'))
+        informatii['nrCui4'] = len(
+            set(op['cuiP'] for op in op1 if op['tip_partener'] == '4'))
+        informatii['nr_BF_i1'] = sum(
+            op['nrBF'] for op in op2 if op['tip_op2'] == 'I1')
+        informatii['incasari_i1'] = sum(
+            op['total'] for op in op2 if op['tip_op2'] == 'I1')
+        informatii['incasari_i2'] = sum(
+            op['total'] for op in op2 if op['tip_op2'] == 'I2')
+        informatii['nrFacturi_terti'] = len(
+            set(invoices.filtered(lambda r: r.sequence_type == 'autoinv2')))
+        informatii['nrFacturi_benef'] = len(
+            set(invoices.filtered(lambda r: r.sequence_type == 'autoinv1')))
+        informatii['nrFacturi'] = len(
+            set(invoices.filtered(lambda r: r.move_type in ('out_invoice', 'out_refund'))))
+        informatii['nrFacturiL_PF'] = 0
+        informatii['nrFacturiLS_PF'] = len(
+            set(invoices.filtered(lambda r: r.operation_type == 'LS' and
+                                            r.partner_type == '2' and
+                                            r.amount_total <= 10000)))
+        informatii['val_LS_PF'] = int(round(sum(
+            inv.amount_total for inv in invoices.filtered(
+                lambda r: r.operation_type == 'LS' and
+                          r.partner_type == '2' and
+                          r.amount_total <= 10000))))
+        informatii['tvaDedAI24'] = int(
+            round(sum(op['tva_24'] for op in payments if
+                      op['type'] in ('in_invoice', 'in_refund') and
+                      op['vat_on_payment'] is True)))
+        informatii['tvaDedAI20'] = int(round(sum(
+            op['tva_20'] for op in payments if
+            op['type'] in ('in_invoice', 'in_refund') and
+            op['vat_on_payment'] is True)))
+        informatii['tvaDedAI19'] = int(round(sum(
+            op['tva_19'] for op in payments if
+            op['type'] in ('in_invoice', 'in_refund') and
+            op['vat_on_payment'] is True)))
+        informatii['tvaDedAI9'] = int(round(sum(
+            op['tva_9'] for op in payments if
+            op['type'] in ('in_invoice', 'in_refund') and
+            op['vat_on_payment'] is True)))
+        informatii['tvaDedAI5'] = int(round(sum(
+            op['tva_5'] for op in payments if
+            op['type'] in ('in_invoice', 'in_refund') and
+            op['vat_on_payment'] is True)))
+
+        comm_partner = self.company_id.partner_id.commercial_partner_id
+        ctx = dict(self._context)
+        ctx.update({'check_date': self.date_to})
+
+        if comm_partner.with_context(ctx)._check_vat_on_payment():
+            informatii['tvaDed24'] = int(round(sum(
+                op['tva_24'] for op in payments if
+                op['type'] in ('in_invoice', 'in_refund') and
+                op['vat_on_payment'] is False)))
+            informatii['tvaDed20'] = int(round(sum(
+                op['tva_20'] for op in payments if
+                op['type'] in ('in_invoice', 'in_refund') and
+                op['vat_on_payment'] is False)))
+            informatii['tvaDed19'] = int(round(sum(
+                op['tva_19'] for op in payments if
+                op['type'] in ('in_invoice', 'in_refund') and
+                op['vat_on_payment'] is False)))
+            informatii['tvaDed9'] = int(round(sum(
+                op['tva_9'] for op in payments if
+                op['type'] in ('in_invoice', 'in_refund') and
+                op['vat_on_payment'] is False)))
+            informatii['tvaDed5'] = int(round(sum(
+                op['tva_5'] for op in payments if
+                op['type'] in ('in_invoice', 'in_refund') and
+                op['vat_on_payment'] is False)))
+            informatii['tvaCol24'] = int(round(sum(
+                op['tva_24'] for op in payments if
+                op['type'] in ('out_invoice', 'out_refund') and
+                op['vat_on_payment'] is True)))
+            informatii['tvaCol20'] = int(round(sum(
+                op['tva_20'] for op in payments if
+                op['type'] in ('out_invoice', 'out_refund') and
+                op['vat_on_payment'] is True)))
+            informatii['tvaCol19'] = int(round(sum(
+                op['tva_19'] for op in payments if
+                op['type'] in ('out_invoice', 'out_refund') and
+                op['vat_on_payment'] is True)))
+            informatii['tvaCol9'] = int(round(sum(
+                op['tva_9'] for op in payments if
+                op['type'] in ('out_invoice', 'out_refund') and
+                op['vat_on_payment'] is True)))
+            informatii['tvaCol5'] = int(round(sum(
+                op['tva_5'] for op in payments if
+                op['type'] in ('out_invoice', 'out_refund') and
+                op['vat_on_payment'] is True)))
+        informatii['incasari_ag'] = 0
+        informatii['costuri_ag'] = 0
+        informatii['marja_ag'] = 0
+        informatii['tva_ag'] = 0
+        informatii['pret_vanzare'] = 0
+        informatii['pret_cumparare'] = 0
+        informatii['marja_antic'] = 0
+        informatii['tva_antic'] = 0
+        informatii['solicit'] = int(self.solicit)
+        if self.solicit:
+            informatii['achizitiiPE'] = int(self.achizitiiPE)
+            informatii['achizitiiCR'] = int(self.achizitiiCR)
+            informatii['achizitiiCB'] = int(self.achizitiiCB)
+            informatii['achizitiiCI'] = int(self.achizitiiCI)
+            informatii['achizitiiA'] = int(self.achizitiiA)
+            informatii['achizitiiB24'] = int(self.achizitiiB24)
+            informatii['achizitiiB20'] = int(self.achizitiiB20)
+            informatii['achizitiiB19'] = int(self.achizitiiB19)
+            informatii['achizitiiB9'] = int(self.achizitiiB9)
+            informatii['achizitiiB5'] = int(self.achizitiiB5)
+            informatii['achizitiiS24'] = int(self.achizitiiS24)
+            informatii['achizitiiS20'] = int(self.achizitiiS20)
+            informatii['achizitiiS19'] = int(self.achizitiiS19)
+            informatii['achizitiiS9'] = int(self.achizitiiS9)
+            informatii['achizitiiS5'] = int(self.achizitiiS5)
+            informatii['importB'] = int(self.importB)
+            informatii['acINecorp'] = int(self.acINecorp)
+            informatii['livrariBI'] = int(self.livrariBI)
+            informatii['BUN24'] = int(self.BUN24)
+            informatii['BUN20'] = int(self.BUN20)
+            informatii['BUN19'] = int(self.BUN19)
+            informatii['BUN9'] = int(self.BUN9)
+            informatii['BUN5'] = int(self.BUN5)
+            informatii['valoareScutit'] = int(self.valoareScutit)
+            informatii['BunTI'] = int(self.BunTI)
+            informatii['Prest24'] = int(self.Prest24)
+            informatii['Prest20'] = int(self.Prest20)
+            informatii['Prest19'] = int(self.Prest19)
+            informatii['Prest9'] = int(self.Prest9)
+            informatii['Prest5'] = int(self.Prest5)
+            informatii['PrestScutit'] = int(self.PrestScutit)
+            informatii['LIntra'] = int(self.LIntra)
+            informatii['PrestIntra'] = int(self.PrestIntra)
+            informatii['Export'] = int(self.Export)
+            informatii['livINecorp'] = int(self.livINecorp)
+            informatii['efectuat'] = int(self.solicit)
+        return informatii

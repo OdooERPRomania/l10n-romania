@@ -64,6 +64,6 @@
         id="l10n_ro_declaration_D394.menu_run_declaration"
         name="D394 Declaration"
         action="l10n_ro_declaration_D394.action_run_declaration394"
-        parent="l10n_ro_declaration.menu_declaration"
+        parent="l10n_ro.account_reports_ro_statements_menu"
     />
 </odoo>

@@ -9,7 +9,6 @@ class AccountJournal(models.Model):
     _inherit = "account.journal"
 
     fiscal_receipt = fields.Boolean("Fiscal Receipts Journal")
-    #sequence_id = fields.Many2one('ir.sequence', 'Reference Sequence')
+    sequence_id = fields.Many2one('ir.sequence', 'Reference Sequence')
     #partner_id = fields.Integer( related="sequence_id.partner_id")
-    #sequence_type = fields.Selection(
-    #    related="sequence_id.sequence_type", string="Sequence Type")
+    sequence_type = fields.Selection(related="sequence_id.sequence_type", string="Sequence Type")
