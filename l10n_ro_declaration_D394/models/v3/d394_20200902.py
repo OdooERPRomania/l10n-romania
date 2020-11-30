@@ -80,9 +80,87 @@ class Declaratie394(models.TransientModel):
         sign = self.generate_sign()
         xmldict.update(sign)
         _logger.warning(xmldict)
+
         for key, val in xmldict.items():
-            data_file += """{}={} """.format(key, self.value_to_string(val))
-        data_file += """ />"""
+            if key not in ('informatii', 'rezumat1', 'rezumat2',
+                           'serieFacturi', 'lista',
+                           'facturi', 'op1', 'op2'):
+                data_file += """%s="%s" """ % (key, val)
+        data_file += """>"""
+        data_file += """
+    <informatii """
+        for key, val in xmldict['informatii'].items():
+            data_file += """%s="%s" """ % (key, val)
+        data_file += """
+    />"""
+        for client in xmldict['rezumat1']:
+            data_file += """
+    <rezumat1 """
+            for key, val in client.items():
+                if key != 'detaliu':
+                    data_file += """%s="%s" """ % (key, val)
+            if client['detaliu']:
+                data_file += """>"""
+                for line in client['detaliu']:
+                    data_file += """
+        <detaliu """
+                    for det_key, det_val in line.items():
+                        data_file += """%s="%s" """ % (det_key, det_val)
+                    data_file += """/>"""
+                data_file += """
+    </rezumat1>"""
+            else:
+                data_file += """/>"""
+        for client in xmldict['rezumat2']:
+            data_file += """
+    <rezumat2 """
+            for key, val in client.items():
+                data_file += """%s="%s" """ % (key, val)
+            data_file += """/>"""
+    #     for client in xmldict['serieFacturi']:
+    #         data_file += """
+    # <serieFacturi """
+    #         for key, val in client.items():
+    #             data_file += """%s="%s" """ % (key, val)
+    #         data_file += """/>"""
+        for client in xmldict['lista']:
+            data_file += """
+    <lista """
+            for key, val in client.items():
+                data_file += """%s="%s" """ % (key, val)
+            data_file += """/>"""
+        for client in xmldict['facturi']:
+            data_file += """
+    <facturi """
+            for key, val in client.items():
+                data_file += """%s="%s" """ % (key, val)
+            data_file += """/>"""
+        for client in xmldict['op1']:
+            data_file += """
+    <op1 """
+            for key, val in client.items():
+                if key != 'op11':
+                    data_file += """%s="%s" """ % (key, val)
+            if client['op11']:
+                data_file += """>"""
+                for line in client['op11']:
+                    data_file += """<op11 """
+                    for key, val in line.items():
+                        data_file += """%s="%s" """ % (key, val)
+                    data_file += """/>"""
+                data_file += """
+    </op1>"""
+            else:
+                data_file += """/>"""
+        for client in xmldict['op2']:
+            data_file += """
+    <op2 """
+            for key, val in client.items():
+                data_file += """%s="%s" """ % (key, val)
+            data_file += """/>"""
+        data_file += """
+    </declaratie394>"""
+
         _logger.warning(data_file)
         return data_file
 
