@@ -22,6 +22,12 @@ SEQUENCE_TYPE = [
     ("autoinv1", "Customer Auto Invoicing"),
     ("autoinv2", "Supplier  Auto Invoicing"),
 ]
+INVOICE_ORIGIN = [('', 'Company'),
+                  ('1', 'facturi'),
+                  ('2', 'borderouri'),
+                  ('3', 'file carnet comercializare'),
+                  ('4','contracte'),
+                  ('5', 'alte documente')]
 class product_product(models.Model):
     _inherit = "product.product"
 
@@ -122,6 +128,8 @@ class AccountMove(models.Model):
             inv.operation_type = oper_type
         return True
 
+
+
     @api.depends('partner_id')
     def _get_partner_type(self):
         for inv in self:
@@ -153,6 +161,8 @@ class AccountMove(models.Model):
         store=True,
         index=True,
     )
+    invoice_origin_d394 = fields.Selection(INVOICE_ORIGIN, string = 'Document type', default = '1')
+
     inv_number = fields.Char(
         "Invoice Number", compute="_get_inv_number", store=True, index=True
     )

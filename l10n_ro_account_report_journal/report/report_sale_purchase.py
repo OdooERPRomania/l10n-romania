@@ -204,6 +204,8 @@ class SaleJournalReport(models.TransientModel):
             res = anaf.with_context(move_id=inv1.id)._get_vat_report_data(
                 anaf.company_id.id, anaf.date_from, anaf.date_to
             )
+            _logger.warning("TTTCCCTTTT")
+            _logger.warning(res)
             if inv1.name == "INV/2020/11/0003":
                 print(res)
             if res:
