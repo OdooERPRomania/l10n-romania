@@ -26,7 +26,7 @@ INVOICE_ORIGIN = [('', 'Company'),
                   ('1', 'facturi'),
                   ('2', 'borderouri'),
                   ('3', 'file carnet comercializare'),
-                  ('4','contracte'),
+                  ('4', 'contracte'),
                   ('5', 'alte documente')]
 class product_product(models.Model):
     _inherit = "product.product"

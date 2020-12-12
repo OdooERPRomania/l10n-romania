@@ -153,6 +153,7 @@ class Declaratie394(models.TransientModel):
             ('company_id', '=', self.company_id.id),
             ('company_id', 'in', self.company_id.child_ids.ids)
         ])
+        recipes_months = self.get_montly_invoices_by_tags(recipes)
         data_file = """<?xml version="1.0" encoding="UTF-8"?>
             <declaratie394
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -161,7 +162,9 @@ class Declaratie394(models.TransientModel):
             """
 
         op1 = self._get_op1(invoices)
-        op2 = self._get_op2(recipes)
+        op2 = []
+        for recipies_month in recipes_months:
+            op2 += self._get_op2(recipes_months)
         payments = self._get_payments()
 
         xmldict = {
@@ -399,21 +402,22 @@ class Declaratie394(models.TransientModel):
             months.extend([(m, year_end) for m in range(1, month_end + 1)])
         return months
 
-    def get_montly_invoices_by_tags(self, types, tags):
+    def get_montly_invoices_by_tags(self, invoices):
         invoice_montly = []
+        invoices_ids = invoices.mapped('id')
         months_year = self.get_months_period()
         for month, year in months_year:
             invoices = (
-                self.env["account.move.line"]
+                self.env["account.move"]
                     .search(
                     [
-                        ("move_id.state", "=", "posted"),
-                        ("move_id.move_type", "in", types),
-                        ("move_id.invoice_date", ">=", datetime.datetime(year, month, 1)),
-                        ("move_id.invoice_date", "<", datetime.datetime(year, month + 1, 1)),
-                        ("move_id.company_id", "=", self.company_id.id),
-                        ("tax_tag_ids", "in", tags),
-                    ]).mapped("move_id"))
+                        ("state", "=", "posted"),
+                        ("invoice_date", ">=", datetime.datetime(year, month, 1)),
+                        ("invoice_date", "<", datetime.datetime(year, month + 1, 1)),
+                        ("company_id", "=", self.company_id.id),
+                        ("id", "in", invoices_ids),
+                    ]))
+
             invoices.sorted(key=lambda r: r.invoice_date)
             invoice_montly.append(invoices)
         return invoice_montly
@@ -631,6 +635,11 @@ class Declaratie394(models.TransientModel):
 
 
         def _get_operation_type(invoices):
+            ### Is used to determine the type of operation.
+            ###   Input: more invoices
+            ###   Return: a dictionary keys operation type and values are invoice lines for this operation type
+
+
             operation_type = {'A':[],
                               'L':[],
                               'C':[],
@@ -645,9 +654,10 @@ class Declaratie394(models.TransientModel):
             mv_line_obj = self.env["account.move.line"]
             invoices_id = []
             for invoice in invoices :
-                _logger.warning('Position Fiscal')
-                _logger.warning(invoice.fiscal_position_id.name)
-                if invoice.fiscal_position_id.name=="Regim TVA la Incasare":
+                #_logger.warning('Position Fiscal')
+                #_logger.warning(invoice.name)
+                #_logger.warning(invoice.fiscal_position_id.name)
+                if invoice.fiscal_position_id.name =="Regim TVA la Incasare":
                     domain = [ ("move_id.id","=",invoice.id),
                                 ("tax_exigible", "=", True),
                                 ("tax_tag_ids", "!=", False),
@@ -659,7 +669,7 @@ class Declaratie394(models.TransientModel):
                 else:
                     invoices_id.append(invoice.id)
 
-            domain = [  ("move_id.id","in",invoices_id),
+            domain = [("move_id.id","in",invoices_id),
                         ("tax_exigible", "=", True),
                         ("tax_tag_ids", "!=", False),
                         ("move_id.state", "=", "posted"),
@@ -668,24 +678,24 @@ class Declaratie394(models.TransientModel):
             move_lines = mv_line_obj.search(domain)
             for record in move_lines:
                 for tag in record.tax_tag_ids:
-                    #_logger.warning(tag.name)
                     tag_name = tag.name[1:]
-                    sign = tag.name[0]
-                    #_logger.warning(tag_name)
-                   # _logger.warning(sign)
-                    #_logger.warning(dict_tags[tag_name])
-
                     type = dict_tags[tag_name][1]
                     operation_type[type].append(record)
-
             #_logger.warning('Move Linesssss')
             #_logger.warning(operation_type)
             return operation_type
 
         def _get_vat_line(tax_move_lines):
+            # Input lines invoices
+            # Return dict whit key tags and the amount on the tag  and a dict  key tags and value a list of invoice number
+
+
+
             mv_line_obj = self.env["account.move.line"]
             vat_report = {}
+            invoices_number = {}
             for record in tax_move_lines:
+
                 for tag in record.tax_tag_ids:
 
                     if record.move_id.tax_cash_basis_rec_id:
@@ -707,73 +717,79 @@ class Declaratie394(models.TransientModel):
                             tag_id = report_line.tag_name
                             if tag_id not in vat_report.keys():
                                 vat_report[tag_id] = 0.0
+                                invoices_number[tag_id] = []
                             vat_report[tag_id] += tag_amount
+                            invoices_number[tag_id].append(record.move_id)
                     else:
                         # Then, it's a financial tag (sign is always +, and never shown in tag name)
                         tag_id = tag.name
                         if tag_id not in vat_report.keys():
                             vat_report[tag_id] = 0.0
+                            invoices_number[tag_id] = []
                         vat_report[tag_id] += tag_amount
+                        invoices_number[tag_id].append(record.move_id)
 
-            return vat_report
-
-
-
-
+            return vat_report, invoices_number
 
 
 
         def _get_vat_data(part_invoices, partner, partner_type, doc_type) :
-            #vat_data = self.with_context(move_id=part_invoices.id)._get_vat_report_data(self.company_id.id,
-                                                                                        #self.date_from, self.date_to)
-
             denP = partner.name.replace('&', '-').replace('"', '')
-            nrFact = len(part_invoices)
-            line= _get_operation_type(part_invoices)
-            _logger.warning("vvvvvaaattttvvvvvv")
-            new_dicts = []
-            for oper_type , move_lines in line.items():
+            #  operation type
+            line = _get_operation_type(part_invoices)
+            res_dict =[]
+            for oper_type,move_lines in line.items():
 
                 if len(move_lines) > 0:
-                   # _logger.warning(oper_type)
-                   # _logger.warning(move_lines)
-                    vat_line = _get_vat_line(move_lines)
-                    #_logger.warning("OOOOOOoooo0000")
-                    #_logger.warning(vat_line)
-                    #_logger.warning(oper_type)
 
-                    for key in vat_line.keys():
+
+                    tags_line = _get_vat_line(move_lines)[0]
+                    invoices_number = _get_vat_line(move_lines)[1]
+                    _logger.warning("OOOOOOoooo0000")
+                    _logger.warning(tags_line)
+                    _logger.warning(oper_type)
+                    _logger.warning(invoices_number)
+                    # base_cota , tva_cota , invoices_number dicts it is used  for sort on cota TVA
+                    base_cota = {}
+                    tva_cota = {}
+                    invoices_number_dict = {}
+                    for key in tags_line.keys():
                         _logger.warning(key)
 
-                        base_cota = {}
-                        tva_cota = {}
                         if dict_tags[key][2] == 'BAZA':
                             cota = dict_tags[key][0]
                             new_key = dict_tags[key][3]
                             if cota in base_cota.keys():
-                                base_cota[cota] += vat_line[key]
+                                base_cota[cota] += tags_line[key]
                             else :
-                                base_cota.update({cota:vat_line[key]})
+                                base_cota.update({cota:tags_line[key]})
 
                             if cota in tva_cota.keys():
-                                 if new_key in vat_line.keys():
-                                     tva_cota[cota] += vat_line[new_key]
+                                 if new_key in tags_line.keys():
+                                     tva_cota[cota] += tags_line[new_key]
                                  else:
                                       _logger.warning("{} key not found".format(new_key))
                             else:
-                                 if new_key in vat_line.keys():
-                                    tva_cota.update({cota:vat_line[new_key]})
+                                 if new_key in tags_line.keys():
+                                    tva_cota.update({cota:tags_line[new_key]})
                                  else:
                                     _logger.warning("{} key not found".format(new_key))
                                     tva_cota.update({cota:0 })
-                            #_logger.warning(vat_line)
+
+                            if cota in invoices_number_dict.keys():
+                                invoices_number_dict[cota] += invoices_number[key]
+                            else :
+                                invoices_number_dict.update({cota:invoices_number[key]})
+
+                           # _logger.warning(base_cota)
+                           # _logger.warning(tva_cota)
                     for cota in base_cota.keys():
                         new_dict = {
                                 'tip': oper_type,
                                 'tip_partener': partner_type,
                                 'cota': cota,
                                 'denP': denP,
-                                'nrFact': nrFact,
+                                'nrFact': len(set(invoices_number_dict[cota])),
                                 'baza': int(round(base_cota[cota])),
                                 'tva' : int(round(tva_cota[cota])),
                                 'tip_document': doc_type,
@@ -809,9 +825,9 @@ class Declaratie394(models.TransientModel):
                         else:
                             new_dict['cuiP'] = partner._split_vat(partner.vat)[1]
 
-                        new_dicts.append(new_dict)
+                        res_dict.append(new_dict)
                         #_logger.warning(new_dict)
-            return new_dicts
+            return res_dict
 
         def adauga_op1(op1, new):
             if op1:
@@ -861,9 +877,7 @@ class Declaratie394(models.TransientModel):
         obj_partner = self.env['res.partner']
         obj_tax = self.env['account.tax']
 
-
         anaf = self.env["l10n.ro.account.report.journal"]
-
 
         comp_curr = self.company_id.currency_id
         op1 = []
@@ -873,31 +887,25 @@ class Declaratie394(models.TransientModel):
         for partner_type in partner_types:
             part_types_inv= invoices.filtered(
                 lambda r: r.partner_type == partner_type)
-            _logger.warning("Partener Oper Type InvVVVVVVVVVVVVVVVVVVVVVVV")
-            _logger.warning(partner_type)
-            _logger.warning(part_types_inv)
+            #_logger.warning("Partener Oper Type Inv")
+            #_logger.warning(partner_type)
+            #_logger.warning(part_types_inv)
 
             partner_ids = part_types_inv.mapped('partner_id.id')
-            _logger.warning("ZZZXXXXXZZZZ")
-            _logger.warning(part_types_inv)
+
             for partner in  obj_partner.browse(partner_ids):
-                _logger.warning("ppppZXXXXXZSSSSSSS")
-                _logger.warning(partner.name)
-                _logger.warning(part_types_inv.partner_id)
-                _logger.warning(partner.id)
+                #_logger.warning("Partener")
+                #_logger.warning(partner.name)
+                #_logger.warning(part_types_inv.partner_id)
                 part_invoices = part_types_inv.filtered(lambda r: r.partner_id.id == partner.id)
-                _logger.warning(part_invoices)
                 if partner_type == '2':
                     doc_types = list(set([inv.invoice_origin_d394 for inv in part_invoices]))
                     _logger.warning(doc_types)
                     for doc_type in doc_types:
-
-                        doctype_invoices = part_invoices #search('invoice_origin','=',doc_type)
-                        new_dictt= _get_vat_data(doctype_invoices,partner,partner_type,doc_type)
-
+                        doctype_invoices = part_invoices.filtered( lambda r: r.invoice_origin_d394 == doc_type)
+                        new_dictt = _get_vat_data(doctype_invoices,partner,partner_type,doc_type)
                         op1 += new_dictt
                 else:
-                    #_logger.warning("AAXXXXAAA")
                     doctype_invoices = part_invoices
                     #_logger.warning(len(part_invoices))
                     doc_type = ''
@@ -907,11 +915,6 @@ class Declaratie394(models.TransientModel):
                 op1 += new_dictt
         _logger.warning(op1)
         return op1
-
-
-
-
-
 
 
     def compute_invoice_taxes_ammount(self,invoices):
@@ -983,8 +986,7 @@ class Declaratie394(models.TransientModel):
         oper_type = 'I1'
 
         months = set([fields.Date.from_string(receipt.invoice_date).month for receipt in receipts])
-        for month in months:
-            domain = [()]
+
         nrAMEF = len(set([receipt.journal_id.id for receipt in receipts]))
         nrBF = len(receipts)
         total = 0
