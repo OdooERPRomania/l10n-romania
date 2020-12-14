@@ -587,27 +587,29 @@ class Declaratie394(models.TransientModel):
             for inv in invoices :
                 if inv.invoice_line_ids:
                      inv_lines.append(inv.invoice_line_ids)
-                        # [_logger.warning(inv_line.product_id.name) for inv_line in inv_lines]
+                     _logger.warning("OP11OP11OPPPPPPPP11111")
+                     _logger.warning(inv.invoice_line_ids.product_id)
             codes = inv.invoice_line_ids.mapped('product_id.anaf_code_id')
+            _logger.warning(new_oper_type)
+            _logger.warning(inv_lines)
             if (partner_type == '1' and new_oper_type in ('V', 'C'))\
             or (partner_type == '2' and new_oper_type == 'N'):
-                _logger.warning("OP11OP11OP")
+                _logger.warning(codes)
+
                 for code in codes:
                     new_code = code
                     if code.parent_id:
                         new_code = code.parent_id
                         cod_lines = []
                         if partner_type == '1':
-                            cod_lines = [line for line in inv_lines.filtered(lambda r:\
-                                          r.product_id.anaf_code_id ==  code and new_code.name <= '31') ]
+                            cod_lines = list(filter(lambda r: r.product_id.anaf_code_id == code and\
+                                                              int(new_code.name) <= 31, inv_lines))
                         else:
-
-                            cod_lines = [line for line in  inv_lines.filtered(lambda r:
-                                                       r.product_id.anaf_code_id ==code)]
-
+                            cod_lines = list(filter(lambda r:r.product_id.anaf_code_id == code,inv_lines))
+                    _logger.warning("NFACT_OP11")
+                    _logger.warning(cod_lines)
                     if cod_lines:
-                        nrFact = len(set([line.move_id.id for line in inv_lines.filtered(lambda r:\
-                                 r.product_id.anaf_code_id ==code)]))
+                        nrFact = len(set(list(filter(lambda r: r.product_id.anaf_code_id == code,inv_lines))))
                         _logger.warning("NFACT_OP11")
                         _logger.warning(nrFact)
                         baza1 = 0
@@ -621,10 +623,9 @@ class Declaratie394(models.TransientModel):
                                                        comp_curr,line.company_id,inv_date)
                             if new_oper_type == 'C':
                                 taxes1 += new_taxes
-                        op11_dict = {
-                                      'codPR': code.name,
-                                              'nrFactPR': nrFact,
-                                               'bazaPR': int(round(baza1))
+                        op11_dict = { 'codPR': code.name,
+                                      'nrFactPR': nrFact,
+                                      'bazaPR': int(round(baza1))
                                                }
                         if new_oper_type in ( 'A', 'L', 'C', 'AI'):
                                 op11_dict['tvaPR'] = int(round(taxes1))
@@ -680,6 +681,8 @@ class Declaratie394(models.TransientModel):
                 for tag in record.tax_tag_ids:
                     tag_name = tag.name[1:]
                     type = dict_tags[tag_name][1]
+                    if type in ["A","C","AS"] and record.move_id.partner_type == "2" :
+                        operation_type["N"].append(record)
                     operation_type[type].append(record)
             #_logger.warning('Move Linesssss')
             #_logger.warning(operation_type)
@@ -793,7 +796,7 @@ class Declaratie394(models.TransientModel):
                                 'baza': int(round(base_cota[cota])),
                                 'tva' : int(round(tva_cota[cota])),
                                 'tip_document': doc_type,
-                                'op11': _get_op11(part_invoices,partner_type,oper_type,cota,comp_curr)
+                                'op11': _get_op11(set(invoices_number_dict[cota]),partner_type,oper_type,cota,comp_curr)
                                 }
                         if partner_type == '1':
                                 new_dict['cuiP'] = partner._split_vat(partner.vat)[1]
@@ -894,8 +897,8 @@ class Declaratie394(models.TransientModel):
             partner_ids = part_types_inv.mapped('partner_id.id')
 
             for partner in  obj_partner.browse(partner_ids):
-                #_logger.warning("Partener")
-                #_logger.warning(partner.name)
+                _logger.warning("Partener")
+                _logger.warning(partner.name)
                 #_logger.warning(part_types_inv.partner_id)
                 part_invoices = part_types_inv.filtered(lambda r: r.partner_id.id == partner.id)
                 if partner_type == '2':
@@ -1091,6 +1094,7 @@ class Declaratie394(models.TransientModel):
                                      partner_type and
                                      x['tip'] == 'N'])
                     for doc_type in doc_types:
+                        _logger.warning("RRRezumaTTTT")
                         op1s = [x for x in op1 if
                                 x['tip_partener'] == partner_type and
                                 x['cota'] == cota and
@@ -1156,8 +1160,8 @@ class Declaratie394(models.TransientModel):
                 op['nrFact'] for op in op1s if op['tip'] == 'V')))
             rezumat1['bazaV'] = int(round(sum(
                 op['baza'] for op in op1s if op['tip'] == 'V')))
-            # rezumat1['tvaV'] = int(round(sum(
-            #    op['tva'] for op in op1s if op['tip'] == 'V')))
+            rezumat1['tvaV'] = int(round(sum(
+                op['tva'] for op in op1s if op['tip'] == 'V')))
         if (partner_type != '2') and (cota_amount != 0):
             rezumat1['facturiC'] = int(round(sum(
                 op['nrFact'] for op in op1s if op['tip'] == 'C')))
@@ -1166,12 +1170,12 @@ class Declaratie394(models.TransientModel):
             rezumat1['tvaC'] = int(round(sum(
                 op['tva'] for op in op1s if op['tip'] == 'C')))
         if op1s[0]['tip_partener'] == '2' and ('tip_document' in op1s[0]):
-            _logger.warning(op1s)
-           # rezumat1['facturiN'] = int(round(sum(
-           #    op['tva'] for op in op1s if op['tip'] == 'N')))
-            rezumat1['document_N'] = op1s[0]['tip_document']
-            _logger.warning(op1s)
-            rezumat1['bazaN'] = int(round(sum(
+
+           rezumat1['facturiN'] = int(round(sum(
+               op['tva'] for op in op1s if op['tip'] == 'N')))
+           rezumat1['document_N'] = op1s[0]['tip_document']
+           _logger.warning(op1s)
+           rezumat1['bazaN'] = int(round(sum(
                 op['baza'] for op  in op1s if  op['tip'] == 'N')))
         rez_detaliu = []
         for op1 in op1s:
