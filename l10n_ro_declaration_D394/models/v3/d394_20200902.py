@@ -5,6 +5,7 @@
 import logging
 import re
 import datetime
+from collections import defaultdict
 from odoo import fields, models
 
 
@@ -163,8 +164,8 @@ class Declaratie394(models.TransientModel):
 
         op1 = self._get_op1(invoices)
         op2 = []
-        for recipies_month in recipes_months:
-            op2 += self._get_op2(recipes_months)
+        for recipes_month in recipes_months:
+            op2 += self._get_op2(recipes_month)
         payments = self._get_payments()
 
         xmldict = {
@@ -177,7 +178,7 @@ class Declaratie394(models.TransientModel):
             'informatii':self._generate_informatii(invoices, payments, op1, op2),
             'rezumat1': self._generate_rezumat1(invoices,payments,op1,op2),
             'rezumat2': self._generate_rezumat2(recipes, payments, op1, op2),
-            #'serieFacturi': self._get_inv_series(),
+            'serieFacturi': self._get_inv_series(invoices),
             'lista': self._generate_lista(),
             'facturi': self.generate_facturi(),
             'op1': op1,
@@ -224,12 +225,12 @@ class Declaratie394(models.TransientModel):
             for key, val in client.items():
                 data_file += """%s="%s" """ % (key, val)
             data_file += """/>"""
-    #     for client in xmldict['serieFacturi']:
-    #         data_file += """
-    # <serieFacturi """
-    #         for key, val in client.items():
-    #             data_file += """%s="%s" """ % (key, val)
-    #         data_file += """/>"""
+        for client in xmldict['serieFacturi']:
+            data_file += """
+    <serieFacturi """
+            for key, val in client.items():
+                data_file += """%s="%s" """ % (key, val)
+            data_file += """/>"""
         for client in xmldict['lista']:
             data_file += """
     <lista """
@@ -989,7 +990,7 @@ class Declaratie394(models.TransientModel):
         oper_type = 'I1'
 
         months = set([fields.Date.from_string(receipt.invoice_date).month for receipt in receipts])
-
+        _logger.warning(f'Month{months}')
         nrAMEF = len(set([receipt.journal_id.id for receipt in receipts]))
         nrBF = len(receipts)
         total = 0
@@ -1613,78 +1614,87 @@ class Declaratie394(models.TransientModel):
                         lista.append(sdict)
         return lista
 
-    def _get_inv_series(self):
-        self.ensure_one()
-        if fields.Date.from_string(self.date_to) < \
-            fields.Date.from_string('2016-10-01'):
-            return []
-        obj_seq = self.env['ir.sequence']
-        obj_invoice = self.env['account.move']
+    def _get_inv_series(self, invoices):
+
+
+
+
+
+
         regex = re.compile('[^a-zA-Z]')
         ctx = self._context.copy()
         year, month = self.get_year_month()
         ctx['fiscalyear_id'] = year
-        invoices = obj_invoice.search([
-            ('state', '!=', 'draft'),
-            ('invoice_date', '>=', self.date_from),
-            ('invoice_date', '<=', self.date_to),
-            '|',
-            ('company_id', '=', self.company_id.id),
-            ('company_id', 'in', self.company_id.child_ids.ids),
-            '|',
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('journal_id.sequence_type', 'in', ('autoinv1', 'autoinv2'))
-        ])
-        _logger.warning("\\\\\\SSSS||||\\\\")
+        #invoices = obj_invoice.search([
+        #    ('state', '!=', 'draft'),
+        #    ('invoice_date', '>=', self.date_from),
+        #    ('invoice_date', '<=', self.date_to),
+        #    '|',
+        #    ('company_id', '=', self.company_id.id),
+        #    ('company_id', 'in', self.company_id.child_ids.ids),
+        #    '|',
+        #    ('move_type', 'in', ('out_invoice', 'out_refund')),
+        #    ('journal_id.sequence_type', 'in', ('autoinv1', 'autoinv2'))
+        #])
 
-        seq_ids = set(invoices.mapped('journal_id.code'))
-        _logger.warning(seq_ids)
-        sequences = obj_seq.browse(seq_ids)
-        _logger.warning(sequences)
+        journals = self.env['account.journal']
+        journal_ids = set(invoices.mapped('journal_id.id'))
         seq_dict = []
-        for sequence in sequences:
-            serie = sequence._interpolate(
-                sequence.prefix,
-                sequence.with_context(ctx)._interpolation_dict_context())
-            nr_init = sequence.number_first
-            nr_last = sequence.number_last
-            for line in sequence.fiscal_ids:
-                if line.fiscalyear_id.id == self.period_id.fiscalyear_id.id:
-                    nr_init = line.sequence_id.number_first
-                    nr_last = line.sequence_id.number_last
-            partner = sequence.partner_id
+        _logger.warning(journal_ids)
+        for journal in journals.browse(journal_ids):
+
+            journal_invoices = invoices.filtered(lambda r: r.journal_id.id == journal.id)
+            first_name = min(journal_invoices._origin.mapped('name'))
+            _logger.warning(journal_invoices)
+            _logger.warning(journal_invoices._origin.mapped('name'))
+            record_first_name =  journal_invoices.filtered(lambda r :r.name==first_name)
+            _logger.warning(record_first_name[0])
+            formatt, format_values = journal_invoices._get_sequence_format_param(first_name)
+            type_reset = journal_invoices._deduce_sequence_number_reset(first_name)
+            _logger.warning(str(formatt).split("{seq:")[0].format(**format_values))
+
+            no_digit = format_values['seq_length']
+            nr_init = 0
+            nr_last = 10^no_digit -1
             tip = 1
-            if sequence.sequence_type == 'autoinv1':
+            partner = journal.partner_id
+            if journal.sequence_type == 'autoinv1':
                 tip = 3
-            elif sequence.sequence_type != 'normal':
+            elif journal.sequence_type != 'normal':
                 tip = 4
-            seq = {
+
+            seria = str(formatt).split("{seq:")[0].format(**format_values)
+            dict_serie = {
                 'tip': tip,
-                'serieI': regex.sub('', serie),
+                'serieI': seria,
                 'nrI': str(nr_init),
                 'nrF': str(nr_last)
             }
             if partner:
-                seq['den'] = partner.name
-                seq['cui'] = partner._split_vat(
-                    partner.vat)[1]
-            if tip == 1:
-                seq_dict.append(seq)
-            seq1 = seq.copy()
-            if sequence.sequence_type == 'normal':
+                dict_serie['den'] = partner.name
+                dict_serie['cui'] = partner._split_vat(partner.vat)[1]
+
+
+            seq_dict.append(dict_serie)
+            if journal.sequence_type == 'normal':
                 tip = 2
-            elif sequence.sequence_type == 'autoinv1':
+            elif journal.sequence_type == 'autoinv1':
                 tip = 3
             else:
                 tip = 4
-            inv = invoices.filtered(
-                lambda r:
-                r.journal_id.sequence_id.id == sequence.id).sorted(
-                key=lambda k: k.inv_number)
-            seq1['tip'] = tip
-            seq1['nrI'] = inv[0].inv_number
-            seq1['nrF'] = inv[-1].inv_number
-            seq_dict.append(seq1)
+            dict_series1 = {
+                "tip": tip,
+                "serieI": seria
+            }
+
+            if type_reset == "month":
+                dict_series1.update({'nrI':0,
+                                     'nrF' :format_values['seq']})
+            else :
+                dict_series1.update({'nrI':str(format_values['seq']- len(journal_invoices)),
+                                     'nrF': format_values['seq'] })
+            seq_dict.append(dict_series1)
+
         return seq_dict
 
     def _generate_informatii(self, invoices, payments, op1, op2):
