@@ -7,7 +7,8 @@
     "website": "https://github.com/OCA/l10n-romania",
     "category": "Warehouse",
     "depends": ["l10n_ro_stock_account", "date_range"],
-    "data": ["report/stock_report_view.xml"],
+    "data": ["report/stock_report_view.xml",
+             "security/ir.model.access.csv",],
     "installable": True,
     "maintainers": ["dhongu", "feketemihai"],
 }
