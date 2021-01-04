@@ -163,15 +163,21 @@ class Declaratie394(models.TransientModel):
             """
 
         op1 = self._get_op1(invoices)
+        sistem_tva = 0
+        for val in op1 :
+            if val['tip'] == 'AI':
+                sistem_tva = 1
+
         op2 = []
         for recipes_month in recipes_months:
             op2 += self._get_op2(recipes_month)
         payments = self._get_payments()
-
+        _logger.warning("xmldict")
+        _logger.warning(sistem_tva)
         xmldict = {
             "luna": month,
             "an": year,
-            "op_efectuate": 1,
+            "tip_D394" : tip_D394,
             "optiune": int(self.optiune),
             "schimb_optiune": int(self.schimb_optiune),
             "prsAfiliat": int(self.prsAfiliat),
@@ -184,16 +190,36 @@ class Declaratie394(models.TransientModel):
             'op1': op1,
             'op2': op2
         }
+        if invoices :
+            xmldict.update({"op_efectuate": 1})
+        else:
+            if recipes:
+                xmldict.update({"op_efectuate": 1})
+            else :
+                xmldict.update({"op_efectuate": 0 })
+        totalPlataA = 0
+        totalPlataA += xmldict['informatii']['nrCui1'] + xmldict['informatii']['nrCui2'] + \
+                       xmldict['informatii']['nrCui3'] + xmldict['informatii']['nrCui4']
+        for line in xmldict['rezumat2']:
+            totalPlataA += line['bazaA'] + line['bazaL'] + line['bazaAI']
+
+
+        _logger.warning("xmldict")
         company_data = self.generate_company_data()
+
         xmldict.update(company_data)
+        xmldict.update({'totalPlataA':totalPlataA})
         sign = self.generate_sign()
         xmldict.update(sign)
+        _logger.warning(xmldict)
 
         for key, val in xmldict.items():
             if key not in ('informatii', 'rezumat1', 'rezumat2',
                            'serieFacturi', 'lista',
                            'facturi', 'op1', 'op2'):
                 data_file += """%s="%s" """ % (key, val)
+                _logger.warning(key)
+                _logger.warning(val)
         data_file += """>"""
         data_file += """
     <informatii """
@@ -288,7 +314,7 @@ class Declaratie394(models.TransientModel):
             "telefon": self.company_id.phone,
             "mail": self.company_id.email,
             "caen": self.company_id.caen_code,
-            "sistemTVA": self.company_id.partner_id.with_context({'check_date': self.date_to})._check_vat_on_payment()
+            "sistemTVA":1 if self.company_id.partner_id.with_context({'check_date': self.date_to})._check_vat_on_payment() else 0,
         }
         return data
 
@@ -408,13 +434,17 @@ class Declaratie394(models.TransientModel):
         invoices_ids = invoices.mapped('id')
         months_year = self.get_months_period()
         for month, year in months_year:
+            if month < 12 :
+                end_months = datetime.datetime(year, month + 1, 1)
+            else :
+                end_months = datetime.datetime(year+1, 1, 1)
             invoices = (
                 self.env["account.move"]
                     .search(
                     [
                         ("state", "=", "posted"),
                         ("invoice_date", ">=", datetime.datetime(year, month, 1)),
-                        ("invoice_date", "<", datetime.datetime(year, month + 1, 1)),
+                        ("invoice_date", "<", end_months),
                         ("company_id", "=", self.company_id.id),
                         ("id", "in", invoices_ids),
                     ]))
@@ -1096,22 +1126,37 @@ class Declaratie394(models.TransientModel):
                                      x['tip'] == 'N'])
                     for doc_type in doc_types:
                         _logger.warning("RRRezumaTTTT")
+                        _logger.warning(doc_types)
+
                         op1s = [x for x in op1 if
                                 x['tip_partener'] == partner_type and
                                 x['cota'] == cota and
-                                x['tip_document'] == doc_type]
-                    if op1s:
-                        rezumat1.append(self.generate_rezumat1(invoices, op1s))
+                                x['tip_document'] == doc_type and
+                                x['tip'] == 'N']
+                        if op1s:
+                            rezumat1.append(self.generate_rezumat1(invoices, op1s))
+                            _logger.warning(" N")
+                            _logger.warning(op1s)
+                            _logger.warning(self.generate_rezumat1(invoices, op1s))
                     op1s = [x for x in op1 if
                             x['tip_partener'] == partner_type and
                             x['cota'] == cota and
                             x['tip'] != 'N']
+                    if op1s:
+                        rezumat1.append(self.generate_rezumat1(invoices, op1s))
+                        _logger.warning("No N")
+                        _logger.warning(op1s)
+                        _logger.warning(self.generate_rezumat1(invoices, op1s))
                 else:
                     op1s = [x for x in op1 if
                             x['tip_partener'] == partner_type and
                             x['cota'] == cota]
-                if op1s:
-                    rezumat1.append(self.generate_rezumat1(invoices, op1s))
+                    if op1s:
+                        rezumat1.append(self.generate_rezumat1(invoices, op1s))
+                        _logger.warning("Partenr 1")
+                        _logger.warning(op1s)
+                        _logger.warning(self.generate_rezumat1(invoices, op1s))
+
         return rezumat1
 
     def generate_rezumat1(self, invoices, op1s):
@@ -1173,9 +1218,9 @@ class Declaratie394(models.TransientModel):
         if op1s[0]['tip_partener'] == '2' and ('tip_document' in op1s[0]):
 
            rezumat1['facturiN'] = int(round(sum(
-               op['tva'] for op in op1s if op['tip'] == 'N')))
+               op['nrFact'] for op in op1s if op['tip'] == 'N')))
            rezumat1['document_N'] = op1s[0]['tip_document']
-           _logger.warning(op1s)
+
            rezumat1['bazaN'] = int(round(sum(
                 op['baza'] for op  in op1s if  op['tip'] == 'N')))
         rez_detaliu = []
@@ -1386,6 +1431,8 @@ class Declaratie394(models.TransientModel):
         if op1s:
             oper_type = op1s[0]['tip']
             cota_amount = int(op1s[0]['cota'])
+            _logger.warning('Rezumat 2')
+            _logger.warning(op1s)
             rezumat2['cota'] = op1s[0]['cota']
             # To review
             rezumat2['bazaFSLcod'] = 0
@@ -1714,9 +1761,11 @@ class Declaratie394(models.TransientModel):
         informatii['incasari_i2'] = sum(
             op['total'] for op in op2 if op['tip_op2'] == 'I2')
         informatii['nrFacturi_terti'] = len(
-            set(invoices.filtered(lambda r: r.sequence_type == 'autoinv2')))
+            set(invoices.filtered(lambda r: r.journal_id.sequence_type == 'autoinv2')))
+
+
         informatii['nrFacturi_benef'] = len(
-            set(invoices.filtered(lambda r: r.sequence_type == 'autoinv1')))
+            set(invoices.filtered(lambda r: r.journal_id.sequence_type == 'autoinv1')))
         informatii['nrFacturi'] = len(
             set(invoices.filtered(lambda r: r.move_type in ('out_invoice', 'out_refund'))))
         informatii['nrFacturiL_PF'] = 0
