@@ -554,63 +554,7 @@ class Declaratie394(models.TransientModel):
         return payments
 
     def _get_op1(self, invoices):
-        def compute_invoice_taxes_ammount(invoices):
-            ''' Helper to get the taxes grouped according their account.tax.group.
-            This method is only used when printing the invoice.
-            '''
-            ress =[]
-            for move in invoices:
-                lang_env = move.with_context(lang=move.partner_id.lang).env
-                tax_lines = move.line_ids.filtered(lambda line: line.tax_line_id)
-                tax_balance_multiplicator = -1 if move.is_inbound(True) else 1
-                res = {}
-                # There are as many tax line as there are repartition lines
-                done_taxes = set()
-                for line in tax_lines:
-                    res.setdefault(line.tax_line_id.tax_group_id, {'base': 0.0, 'amount': 0.0})
-                    res[line.tax_line_id.tax_group_id]['amount'] += tax_balance_multiplicator * (
-                        line.amount_currency if line.currency_id else line.balance)
-                    tax_key_add_base = tuple(move._get_tax_key_for_group_add_base(line))
-                    if tax_key_add_base not in done_taxes:
-                        if line.currency_id and line.company_currency_id and line.currency_id != line.company_currency_id:
-                            amount = line.company_currency_id._convert(line.tax_base_amount, line.currency_id,
-                                                                       line.company_id,
-                                                                       line.date or fields.Date.context_today(self))
-                        else:
-                            amount = line.tax_base_amount
-                        res[line.tax_line_id.tax_group_id]['base'] += amount
-                        # The base should be added ONCE
-                        done_taxes.add(tax_key_add_base)
 
-                # At this point we only want to keep the taxes with a zero amount since they do not
-                # generate a tax line.
-                for line in move.line_ids:
-                    for tax in line.tax_ids.flatten_taxes_hierarchy():
-                        if tax.tax_group_id not in res:
-                            res.setdefault(tax.tax_group_id, {'base': 0.0, 'amount': 0.0})
-                            res[tax.tax_group_id]['base'] += tax_balance_multiplicator * (
-                                line.amount_currency if line.currency_id else line.balance)
-                        re.findall(r'\d+', tax.tax_group_id.name)
-
-                        _logger.warning(int(re.findall(r'\d+', tax.tax_group_id.name)[0]))
-
-                res = sorted(res.items(), key=lambda l: l[0].sequence)
-                if len(ress) == 0:
-                    ress = res
-                else:
-                    for group in res:
-                        found = False
-                        for group_f in ress :
-                            if group_f[0] == group[0]:
-                                group_f[1]['base'] += group[1]['base']
-                                group_f[1]['amount'] += group[1]['amount']
-                                found = True
-                        if not found:
-                            ress.append(group)
-
-                _logger.warning(res)
-            _logger.warning(ress)
-            return ress
 
         def _get_op11(invoices,partner_type,new_oper_type,cota, comp_curr ):
             op11_dicts =[]
@@ -671,7 +615,6 @@ class Declaratie394(models.TransientModel):
             ###   Input: more invoices
             ###   Return: a dictionary keys operation type and values are invoice lines for this operation type
 
-
             operation_type = {'A':[],
                               'L':[],
                               'C':[],
@@ -686,10 +629,8 @@ class Declaratie394(models.TransientModel):
             mv_line_obj = self.env["account.move.line"]
             invoices_id = []
             for invoice in invoices :
-                #_logger.warning('Position Fiscal')
-                #_logger.warning(invoice.name)
-                #_logger.warning(invoice.fiscal_position_id.name)
-                if invoice.fiscal_position_id.name =="Regim TVA la Incasare":
+
+                if invoice.fiscal_position_id.name == "Regim TVA la Incasare":
                     domain = [ ("move_id.id","=",invoice.id),
                                 ("tax_exigible", "=", True),
                                 ("tax_tag_ids", "!=", False),
@@ -723,15 +664,11 @@ class Declaratie394(models.TransientModel):
             # Input lines invoices
             # Return dict whit key tags and the amount on the tag  and a dict  key tags and value a list of invoice number
 
-
-
             mv_line_obj = self.env["account.move.line"]
             vat_report = {}
             invoices_number = {}
             for record in tax_move_lines:
-
                 for tag in record.tax_tag_ids:
-
                     if record.move_id.tax_cash_basis_rec_id:
                         # Cash basis entries are always treated as misc operations, applying the tag sign directly to the balance
                         type_multiplicator = 1
@@ -863,55 +800,10 @@ class Declaratie394(models.TransientModel):
                         #_logger.warning(new_dict)
             return res_dict
 
-        def adauga_op1(op1, new):
-            if op1:
-                try:
-                    found = next(
-                        index for (index, old) in enumerate(op1) if
-                        old.get('tip') == new['tip'] and
-                        old.get('tip_partener') == new['tip_partener'] and
-                        old.get('cota') == new['cota'] and
-                        old.get('cuiP') == new['cuiP'])
-                except:
-                    found = None
-                if found is not None:
-                    old = op1[found]
-                    old['nrFact'] += new['nrFact']
-                    old['baza'] += new['baza']
-                    if 'tva' in old.keys():
-                        old['tva'] += new['tva']
-                    if new['op11']:
-                        if old['op11']:
-                            for new11 in new['op11']:
-                                try:
-                                    found11 = next(
-                                        index for (index, old11)
-                                        in enumerate(old['op11']) if
-                                        old11.get('codPR') == new11['codPR'])
-                                except:
-                                    found11 = None
-                                if found11 is not None:
-                                    old11 = old['op11'][found11]
-                                    old11['nrFactPR'] += new11['nrFactPR']
-                                    old11['bazaPR'] += new11['bazaPR']
-                                    if 'tvaPR' in old11.keys():
-                                        old11['tvaPR'] += new11['tvaPR']
-                                else:
-                                    old['op11'].append(new11)
-                        else:
-                            old['op11'].append(new['op11'])
-                else:
-                    op1.append(new)
-            else:
-                op1.append(new)
-            return op1
-
         self.ensure_one()
-        obj_inv_line = self.env['account.move.line']
-        obj_partner = self.env['res.partner']
-        obj_tax = self.env['account.tax']
 
-        anaf = self.env["l10n.ro.account.report.journal"]
+        obj_partner = self.env['res.partner']
+
 
         comp_curr = self.company_id.currency_id
         op1 = []
@@ -930,23 +822,22 @@ class Declaratie394(models.TransientModel):
             for partner in  obj_partner.browse(partner_ids):
                 _logger.warning("Partener")
                 _logger.warning(partner.name)
-                #_logger.warning(part_types_inv.partner_id)
+
                 part_invoices = part_types_inv.filtered(lambda r: r.partner_id.id == partner.id)
                 if partner_type == '2':
                     doc_types = list(set([inv.invoice_origin_d394 for inv in part_invoices]))
                     _logger.warning(doc_types)
                     for doc_type in doc_types:
                         doctype_invoices = part_invoices.filtered( lambda r: r.invoice_origin_d394 == doc_type)
-                        new_dictt = _get_vat_data(doctype_invoices,partner,partner_type,doc_type)
-                        op1 += new_dictt
+                        new_dict = _get_vat_data(doctype_invoices,partner,partner_type,doc_type)
+                        op1 += new_dict
                 else:
                     doctype_invoices = part_invoices
-                    #_logger.warning(len(part_invoices))
                     doc_type = ''
-                    new_dictt = _get_vat_data(doctype_invoices, partner, partner_type, doc_type)
+                    new_dict = _get_vat_data(doctype_invoices, partner, partner_type, doc_type)
 
                 #_logger.warning(new_dictt)
-                op1 += new_dictt
+                op1 += new_dict
         _logger.warning(op1)
         return op1
 
@@ -1004,23 +895,16 @@ class Declaratie394(models.TransientModel):
                             found = True
                     if not found:
                         ress.append(group)
-
-            _logger.warning(res)
         _logger.warning(ress)
         return ress
 
     def _get_op2(self, receipts):
-        self.ensure_one()
 
-        obj_inv_line = self.env['account.move.line']
-
-        #obj_period = self.env['account.period']
         comp_curr = self.company_id.currency_id
         op2 = []
         oper_type = 'I1'
-
         months = set([fields.Date.from_string(receipt.invoice_date).month for receipt in receipts])
-        _logger.warning(f'Month{months}')
+
         nrAMEF = len(set([receipt.journal_id.id for receipt in receipts]))
         nrBF = len(receipts)
         total = 0
@@ -1028,58 +912,6 @@ class Declaratie394(models.TransientModel):
         tva20 = tva19 = tva9 = tva5 = 0
         cota_groups=self.compute_invoice_taxes_ammount(receipts)
 
-        #domain = [('move_id', 'in', receipts.id)]
-        #inv_lines = obj_inv_line.search(domain)
-        # cotas = set([tax.id for tax in inv_lines.mapped(
-        #         'invoice_line_tax_id')])
-        #     cotas = [x for x in cotas if x]
-        #     for cota in self.env['account.tax'].browse(cotas):
-        #         cota_inv = period_inv.filtered(
-        #             lambda r: cota.id in r.tax_ids.ids)
-        #         cota_amount = 0
-        #         if cota.type == 'percent':
-        #             if cota.child_ids:
-        #                 cota_amount = int(
-        #                     abs(cota.child_ids[0].amount) * 100)
-        #             else:
-        #                 cota_amount = int(cota.amount * 100)
-        #         elif cota.type == 'amount':
-        #             cota_amount = int(cota.amount)
-        #         if cota_amount in (5, 9, 19, 20):
-        #             domain = [('invoice_id', 'in', cota_inv.ids)]
-        #             inv_lines = obj_inv_line.search(domain)
-        #             filtered_inv_lines = []
-        #             for inv_line in inv_lines:
-        #                 inv_type = inv_line.invoice_id.type
-        #                 if inv_type in ('out_invoice',
-        #                                 'out_refund'):
-        #                     tax = inv_line.invoice_line_tax_id
-        #                 if cota.id in tax.ids:
-        #                     filtered_inv_lines.append(inv_line.id)
-        #             inv_lines = obj_inv_line.browse(filtered_inv_lines)
-        #             for line in inv_lines:
-        #                 inv_curr = line.invoice_id.currency_id
-        #                 inv_date = line.invoice_id.date_invoice
-        #                 new_base = inv_curr.with_context(
-        #                     {'date': inv_date}).compute(
-        #                     line.price_subtotal, comp_curr)
-        #                 new_taxes = inv_curr.with_context(
-        #                     {'date': inv_date}).compute(
-        #                     line.price_normal_taxes and
-        #                     line.price_normal_taxes or
-        #                     line.price_taxes, comp_curr)
-        #                 if cota_amount == 20:
-        #                     baza20 += new_base
-        #                     tva20 += new_taxes
-        #                 if cota_amount == 19:
-        #                     baza19 += new_base
-        #                     tva19 += new_taxes
-        #                 elif cota_amount == 9:
-        #                     baza9 += new_base
-        #                     tva9 += new_taxes
-        #                 elif cota_amount == 5:
-        #                     baza5 += new_base
-        #                     tva5 += new_taxes
         for cota_group in cota_groups:
             cota_group_dict = cota_group[1]
             if  cota_group[0].name== "TVA 19%":
@@ -1733,7 +1565,6 @@ class Declaratie394(models.TransientModel):
                 "tip": tip,
                 "serieI": seria
             }
-
             if type_reset == "month":
                 dict_series1.update({'nrI':0,
                                      'nrF' :format_values['seq']})
@@ -1741,7 +1572,6 @@ class Declaratie394(models.TransientModel):
                 dict_series1.update({'nrI':str(format_values['seq']- len(journal_invoices)),
                                      'nrF': format_values['seq'] })
             seq_dict.append(dict_series1)
-
         return seq_dict
 
     def _generate_informatii(self, invoices, payments, op1, op2):
@@ -1769,15 +1599,15 @@ class Declaratie394(models.TransientModel):
         informatii['nrFacturi'] = len(
             set(invoices.filtered(lambda r: r.move_type in ('out_invoice', 'out_refund'))))
         informatii['nrFacturiL_PF'] = 0
-        informatii['nrFacturiLS_PF'] = len(
-            set(invoices.filtered(lambda r: r.operation_type == 'LS' and
-                                            r.partner_type == '2' and
-                                            r.amount_total <= 10000)))
-        informatii['val_LS_PF'] = int(round(sum(
-            inv.amount_total for inv in invoices.filtered(
-                lambda r: r.operation_type == 'LS' and
-                          r.partner_type == '2' and
-                          r.amount_total <= 10000))))
+        #informatii['nrFacturiLS_PF'] = len(
+        #    set(invoices.filtered(lambda r: r.operation_type == 'LS' and
+        #                                    r.partner_type == '2' and
+        #                                    r.amount_total <= 10000)))
+        #informatii['val_LS_PF'] = int(round(sum(
+        #    inv.amount_total for inv in invoices.filtered(
+        #        lambda r: r.operation_type == 'LS' and
+        #                  r.partner_type == '2' and
+        #                  r.amount_total <= 10000))))
         informatii['tvaDedAI24'] = int(
             round(sum(op['tva_24'] for op in payments if
                       op['type'] in ('in_invoice', 'in_refund') and
