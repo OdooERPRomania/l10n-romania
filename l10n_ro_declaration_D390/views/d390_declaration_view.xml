@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_run_d390_form" model="ir.ui.view">
+        <field name="name">anaf.d390.form</field>
+        <field name="model">anaf.d390</field>
+        <field name="arch" type="xml">
+            <form string="D394 Declaration Options">
+                <field name="name" invisible="1" />
+                <group name="main_info">
+                    <field
+                        name="company_id"
+                        options="{'no_create': True}"
+                        groups="base.group_multi_company"
+                    />
+                    <field name="declaration_id" />
+                    <field name="version_id" />
+                    <field name="signature_id" />
+<!--                    <field name="succesor_id" />-->
+                    <field name="bank_account_id" />
+                </group>
+
+                <group name="filters">
+                    <group name="date_range">
+                        <field
+                            name="date_range_id"
+                            domain="['|',('company_id','=',company_id), ('company_id','=',False)]"
+                        />
+                        <field name="date_from" />
+                        <field name="date_to" />
+                    </group>
+                </group>
+                <group colspan="12" col="1">
+                    <separator
+                        string="Save the File with '.xml' extension."
+                        colspan="4"
+                    />
+                    <field name="file_save" filename="name" nolabel="1" />
+                </group>
+                <footer>
+                    <button name="get_report" string="Execute" type="object" />
+                    or
+                    <button string="Cancel" class="oe_link" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_run_declaration390" model="ir.actions.act_window">
+        <field name="name">D390 Declaration</field>
+        <field name="res_model">anaf.d390</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem
+        id="l10n_ro_declaration_D390.menu_run_declaration"
+        name="D390 Declaration"
+        action="l10n_ro_declaration_D390.action_run_declaration390"
+        parent="l10n_ro.account_reports_ro_statements_menu"
+    />
+</odoo>

@@ -562,7 +562,7 @@ class Declaratie394(models.TransientModel):
             for inv in invoices :
                 if inv.invoice_line_ids:
                      inv_lines.append(inv.invoice_line_ids)
-                     _logger.warning("OP11OP11OPPPPPPPP11111")
+
                      _logger.warning(inv.invoice_line_ids.product_id)
             codes = inv.invoice_line_ids.mapped('product_id.anaf_code_id')
             _logger.warning(new_oper_type)
@@ -699,6 +699,8 @@ class Declaratie394(models.TransientModel):
                             invoices_number[tag_id] = []
                         vat_report[tag_id] += tag_amount
                         invoices_number[tag_id].append(record.move_id)
+            _logger.warning("OP11OPPPPPPPP11111")
+            _logger.warning(vat_report)
 
             return vat_report, invoices_number
 
