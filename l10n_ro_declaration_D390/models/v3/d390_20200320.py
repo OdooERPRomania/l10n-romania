@@ -30,7 +30,7 @@ dict_tags = {
              '12_2 - TVA':(9, "N", "TVA",'12_2 - BAZA'),
              '12_3 - BAZA':(5, "N", "BAZA", '12_3 - TVA'),
              '12_3 - TVA':(5, "N", "TVA",'12_3 - BAZA'),
-              '01 - BAZA': (5, "L", "TVA",'01 - BAZA'),
+              '01 - BAZA': (5, "L", "BAZA",'01 - BAZA'),
               '01 - TVA': (5, "L", "TVA",'01 - BAZA'),
               '03 - TVA': (5, "P", "TVA",'01 - BAZA'),
               '03 - BAZA': (5, "P", "TVA",'01 - BAZA'),
@@ -166,65 +166,38 @@ class Declaratie390(models.TransientModel):
         xmldict.update({'totalPlataA':totalPlataA})
         sign = self.generate_sign()
         operatie = self._get_operatie(invoices)
-        rezumat = self.generate_rezumat(operatie)
+        rezumat = self._get_rezumat(operatie)
         xmldict.update({'operatie':operatie})
+        xmldict.update({'rezumat':rezumat})
         _logger.warning(xmldict)
 
         for key, val in xmldict.items():
-            if key not in ('informatii', 'rezumat1', 'rezumat2',
+            if key not in ('operatie', 'rezumat', 'rezumat2',
                            'serieFacturi', 'lista',
                            'facturi', 'op1', 'op2'):
                 data_file += """%s="%s" """ % (key, val)
                 _logger.warning(key)
                 _logger.warning(val)
         data_file += """>"""
+
+
         data_file += """
-    <informatii """
+    <rezumat """
+        for key, val in xmldict['rezumat'].items():
+            data_file += """%s="%s" """ % (key, val)
 
         data_file += """
     />"""
-        for client in xmldict['rezumat1']:
-            data_file += """
-    <rezumat1 """
-            for key, val in client.items():
-                if key != 'detaliu':
-                    data_file += """%s="%s" """ % (key, val)
-            if client['detaliu']:
-                data_file += """>"""
-                for line in client['detaliu']:
-                    data_file += """
-        <detaliu """
-                    for det_key, det_val in line.items():
-                        data_file += """%s="%s" """ % (det_key, det_val)
-                    data_file += """/>"""
-                data_file += """
-    </rezumat1>"""
 
-            data_file += """
-    <op1 """
-            for key, val in client.items():
-                if key != 'op11':
-                    data_file += """%s="%s" """ % (key, val)
-            if client['op11']:
-                data_file += """>"""
-                for line in client['op11']:
-                    data_file += """<op11 """
-                    for key, val in line.items():
-                        data_file += """%s="%s" """ % (key, val)
-                    data_file += """/>"""
-                data_file += """
-    </op1>"""
-            else:
-                data_file += """/>"""
-        for client in xmldict['op2']:
+
+        for client in xmldict['operatie']:
             data_file += """
     <op2 """
             for key, val in client.items():
                 data_file += """%s="%s" """ % (key, val)
             data_file += """/>"""
         data_file += """
-    </declaratie394>"""
-
+    </declaratie390>"""
 
         return data_file
 
@@ -245,7 +218,7 @@ class Declaratie390(models.TransientModel):
             "fax": self.company_id.phone,
             "mail": self.company_id.email,
             "caen": self.company_id.caen_code,
-            "sistemTVA":1 if self.company_id.partner_id.with_context({'check_date': self.date_to})._check_vat_on_payment() else 0,
+
         }
         return data
 
@@ -312,23 +285,39 @@ class Declaratie390(models.TransientModel):
 
 
     def _get_operatie(self, invoices):
-        def _get_operation_type(invoices):
+
+        def _is_R(invoices):
+            res = False
+            inv_lines =[]
+            for inv in invoices :
+                if inv.invoice_line_ids:
+                     inv_lines.append(inv.invoice_line_ids)
+
+            codes = inv.invoice_line_ids.mapped('product_id.anaf_code_id')
+
+            for line in inv_lines:
+                _logger.warning(line.product_id.anaf_code_id.parent_id.name)
+                if line.product_id.anaf_code_id.parent_id.name == '21' or line.product_id.anaf_code_id.name == '21':
+                    res = True
+            return res
+
+        def _get_operation_type(invoices,R):
             ### Is used to determine the type of operation.
             ###   Input: more invoices
             ###   Return: a dictionary keys operation type and values are invoice lines for this operation type
 
-            operation_type = {'L' :[],
-                              'T' :[],
+            operation_type = {'L':[],
+                              'T':[],
                               'A':[],
                               'P':[],
                               'S':[],
-                              'R':[] }
+                              'R':[]
+                              }
 
             mv_line_obj = self.env["account.move.line"]
             invoices_id = []
             for invoice in invoices:
                     invoices_id.append(invoice.id)
-
 
             domain = [("move_id.id","in",invoices_id),
                         ("tax_exigible", "=", True),
@@ -340,11 +329,16 @@ class Declaratie390(models.TransientModel):
             _logger.warning("THISSSSSS")
             _logger.warning(move_lines)
             for record in move_lines:
+
                 for tag in record.tax_tag_ids:
                     _logger.warning(tag)
                     tag_name = tag.name[1:]
                     type = dict_tags[tag_name][1]
                     if type != "N":
+                        if type == "L":
+                            if R:
+                                operation_type['R'].append(record)
+                                continue
                         operation_type[type].append(record)
             #_logger.warning('Move Linesssss')
             #_logger.warning(operation_type)
@@ -393,10 +387,10 @@ class Declaratie390(models.TransientModel):
 
 
 
-        def _get_data(part_invoices, partner) :
+        def _get_data(part_invoices, partner,R) :
             denP = partner.name.replace('&', '-').replace('"', '')
             #  operation type
-            line = _get_operation_type(part_invoices)
+            line = _get_operation_type(part_invoices,R)
             res_dict =[]
             new_dict = {}
             _logger.warning("OOOOOOoooo0000")
@@ -423,8 +417,6 @@ class Declaratie390(models.TransientModel):
                            "denO":partner.name,
                            "baza": base_cota,
                                 }
-
-
                     res_dict.append(new_dict)
                         #_logger.warning(new_dict)
             return res_dict
@@ -440,68 +432,20 @@ class Declaratie390(models.TransientModel):
 
         for partner in  obj_partner.browse(partner_ids):
             part_invoices = invoices.filtered(lambda r: r.partner_id.id == partner.id)
-            new_dict = _get_data(part_invoices,partner)
-            operatii += new_dict
+            part_invoices_noR = part_invoices.filtered(lambda r: _is_R(r) == False)
+            part_invoices_R = part_invoices.filtered(lambda r: _is_R(r) == True)
+            _logger.warning("FFFFLT")
+            _logger.warning(partner.name)
+            if len(part_invoices_noR) > 0:
+                new_dict = _get_data(part_invoices_noR,partner, False)
+                operatii += new_dict
+            if len(part_invoices_R) > 0:
+                new_dict = _get_data(part_invoices_R, partner, True)
+                operatii += new_dict
 
         _logger.warning(operatii)
         return operatii
 
-
-    def compute_invoice_taxes_ammount(self,invoices):
-        ''' Helper to get the taxes grouped according their account.tax.group.
-        This method is only used when printing the invoice.
-        '''
-        ress = []
-        for move in invoices:
-            lang_env = move.with_context(lang=move.partner_id.lang).env
-            tax_lines = move.line_ids.filtered(lambda line: line.tax_line_id)
-            tax_balance_multiplicator = -1 if move.is_inbound(True) else 1
-            res = {}
-            # There are as many tax line as there are repartition lines
-            done_taxes = set()
-            for line in tax_lines:
-                res.setdefault(line.tax_line_id.tax_group_id, {'base': 0.0, 'amount': 0.0})
-                res[line.tax_line_id.tax_group_id]['amount'] += tax_balance_multiplicator * (
-                    line.amount_currency if line.currency_id else line.balance)
-                tax_key_add_base = tuple(move._get_tax_key_for_group_add_base(line))
-                if tax_key_add_base not in done_taxes:
-                    if line.currency_id and line.company_currency_id and line.currency_id != line.company_currency_id:
-                        amount = line.company_currency_id._convert(line.tax_base_amount, line.currency_id,
-                                                                   line.company_id,
-                                                                   line.date or fields.Date.context_today(self))
-                    else:
-                        amount = line.tax_base_amount
-                    res[line.tax_line_id.tax_group_id]['base'] += amount
-                    # The base should be added ONCE
-                    done_taxes.add(tax_key_add_base)
-
-            # At this point we only want to keep the taxes with a zero amount since they do not
-            # generate a tax line.
-            for line in move.line_ids:
-                for tax in line.tax_ids.flatten_taxes_hierarchy():
-                    if tax.tax_group_id not in res:
-                        res.setdefault(tax.tax_group_id, {'base': 0.0, 'amount': 0.0})
-                        res[tax.tax_group_id]['base'] += tax_balance_multiplicator * (
-                            line.amount_currency if line.currency_id else line.balance)
-                    re.findall(r'\d+', tax.tax_group_id.name)
-
-                    _logger.warning(int(re.findall(r'\d+', tax.tax_group_id.name)[0]))
-
-            res = sorted(res.items(), key=lambda l: l[0].sequence)
-            if len(ress) == 0:
-                ress = res
-            else:
-                for group in res:
-                    found = False
-                    for group_f in ress:
-                        if group_f[0] == group[0]:
-                            group_f[1]['base'] += group[1]['base']
-                            group_f[1]['amount'] += group[1]['amount']
-                            found = True
-                    if not found:
-                        ress.append(group)
-        _logger.warning(ress)
-        return ress
 
 
 
