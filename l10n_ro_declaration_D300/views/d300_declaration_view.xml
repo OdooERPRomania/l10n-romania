@@ -12,11 +12,27 @@
                         options="{'no_create': True}"
                         groups="base.group_multi_company"
                     />
-                    <field name="declaration_id" />
-                    <field name="version_id" />
-                    <field name="signature_id" />
-                    <field name="succesor_id" />
-                    <field name="bank_account_id" />
+                    <field
+                        name="declaration_id"
+                        domain="[('name', '=', 'd300')]"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="version_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="signature_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="succesor_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="bank_account_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
                 </group>
                 <group>
                     <group>

@@ -16,5 +16,6 @@
     "data": [
         "data/anaf_d300.xml",
         "security/ir.model.access.csv",
-        "views/d300_declaration_view.xml"],
+        "views/d300_declaration_view.xml",
+    ],
 }

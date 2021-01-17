@@ -1,8 +1,7 @@
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-from datetime import datetime, timedelta
-from unittest.mock import patch
+from datetime import timedelta
 
 from odoo import fields
 from odoo.tests import tagged
@@ -36,7 +35,7 @@ class TestRoSalePurchaseJournal(InvoiceTestCommon):
 
     @classmethod
     def setup_company_data(cls, company_name="", **kwargs):
-        """ taken from  odoo.addons.account.tests.account_test_savepoint
+        """taken from  odoo.addons.account.tests.account_test_savepoint
         Create a new company with Romania accounts
         The current user will get access to this company.
 

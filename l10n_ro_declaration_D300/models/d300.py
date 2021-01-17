@@ -4,11 +4,19 @@
 from odoo import api, fields, models
 
 
-class RunDeclaration(models.TransientModel):
+class ANAFD300(models.TransientModel):
     _name = "anaf.d300"
     _inherit = "anaf.mixin"
     _description = "Declaratie D300"
 
+    @api.model
+    def _get_default_declaration(self):
+        d300 = self.env["anaf.declaration"].search([("name", "=", "d300")], limit=1)
+        if d300:
+            return d300
+        return super()._get_default_declaration()
+
+    declaration_id = fields.Many2one(default=_get_default_declaration)
     succesor_id = fields.Many2one(
         "res.partner",
         string="Succesor",

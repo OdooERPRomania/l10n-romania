@@ -12,22 +12,19 @@
                         options="{'no_create': True}"
                         groups="base.group_multi_company"
                     />
-                    <field name="declaration_id" />
-                    <field name="version_id" />
-                    <field name="signature_id" />
-<!--                    <field name="succesor_id" />-->
-                    <field name="bank_account_id" />
-                </group>
-                <group>
-                    <group>
-                       <field name="intocmit_id"/>
-                        <field name = "optiune" />
-
-                    </group>
-                    <group>
-                      <field name="schimb_optiune"/>
-                        <field name="prsAfiliat"/>
-                    </group>
+                    <field
+                        name="declaration_id"
+                        domain="[('name', '=', 'd394')]"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="version_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="signature_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
                 </group>
                 <group name="filters">
                     <group name="date_range">
