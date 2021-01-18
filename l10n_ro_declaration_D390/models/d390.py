@@ -16,5 +16,10 @@ class RunDeclaration(models.TransientModel):
     optiune = fields.Boolean(string="optiune")
     schimb_optiune = fields.Boolean(string="schimb_optiune")
     prsAfiliat = fields.Boolean(string="prsAfiliat")
+    # tara_m1 = fields.Chart(string = "tara_m1")
+    # cod_m1 =fields
+    # motiv
+    # tara_m2
+    # cod_m2
 
 

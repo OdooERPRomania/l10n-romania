@@ -16,7 +16,7 @@
     "depends": ["l10n_ro_declaration"],
     "data": [
         "views/d390_declaration_view.xml",
-        "views/view_move_form.xml",
+
        # "views/anaf_declaration_view.xml",
        # "views/anaf_signature_view.xml",
 

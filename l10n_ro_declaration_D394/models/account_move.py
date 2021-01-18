@@ -37,10 +37,6 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
 
-  
-
-
-
     @api.depends('partner_id')
     def _get_partner_type(self):
         for inv in self:
@@ -68,9 +64,7 @@ class AccountMove(models.Model):
 
     invoice_origin_d394 = fields.Selection(INVOICE_ORIGIN, string = 'Document type', default = '1')
 
-    inv_number = fields.Char(
-        "Invoice Number", compute="_get_inv_number", store=True, index=True
-    )
+
     partner_type = fields.Char(
         "D394 Partner Type", compute="_get_partner_type", store=True, index=True
     )
