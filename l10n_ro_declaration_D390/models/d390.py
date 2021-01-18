@@ -17,3 +17,4 @@ class ANAFD390(models.TransientModel):
         return super()._get_default_declaration()
 
     declaration_id = fields.Many2one(default=_get_default_declaration)
+    rectificative = fields.Boolean("Rectificative")

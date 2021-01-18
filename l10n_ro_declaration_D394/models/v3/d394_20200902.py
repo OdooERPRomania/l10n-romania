@@ -1,8 +1,6 @@
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
-import datetime
 import logging
-import re
 
 from odoo import fields, models
 
@@ -32,22 +30,15 @@ class Declaratie394(models.TransientModel):
         elif months == 12:
             tip_D394 = "A"
         invoices = self.get_period_invoices(
-            ["out_invoice", "out_refund",
-             "in_invoice", "in_refund",
-             "in_receipt"])
-
+            ["out_invoice", "out_refund", "in_invoice", "in_refund", "in_receipt"]
+        )
         op1 = self._get_op1(invoices)
-        sistem_tva = 0
-        for val in op1:
-            if val["tip"] == "AI":
-                sistem_tva = 1
 
         recipes = self.get_period_invoices(["out_receipt"])
         op2 = self._get_op2(recipes)
 
         payments = self._get_payments()
         _logger.warning("xmldict")
-        _logger.warning(sistem_tva)
         xmldict = {
             "luna": month,
             "an": year,
@@ -56,21 +47,18 @@ class Declaratie394(models.TransientModel):
             "schimb_optiune": int(self.schimb_optiune),
             "prsAfiliat": int(self.prsAfiliat),
             "informatii": self._generate_informatii(invoices, payments, op1, op2),
-            "rezumat1": self._generate_rezumat1(invoices, payments, op1, op2),
-            "rezumat2": self._generate_rezumat2(recipes, payments, op1, op2),
+            "rezumat1": self._generate_rezumat1(invoices, op1),
+            "rezumat2": self._generate_rezumat2(recipes, op1, op2),
             "serieFacturi": self._get_inv_series(invoices),
             "lista": self._generate_lista(),
             "facturi": self.generate_facturi(),
             "op1": op1,
             "op2": op2,
         }
-        if invoices:
+        if invoices or recipes:
             xmldict.update({"op_efectuate": 1})
         else:
-            if recipes:
-                xmldict.update({"op_efectuate": 1})
-            else:
-                xmldict.update({"op_efectuate": 0})
+            xmldict.update({"op_efectuate": 0})
         totalPlataA = 0
         totalPlataA += (
             xmldict["informatii"]["nrCui1"]
@@ -80,15 +68,18 @@ class Declaratie394(models.TransientModel):
         )
         for line in xmldict["rezumat2"]:
             totalPlataA += line["bazaA"] + line["bazaL"] + line["bazaAI"]
-
-        _logger.warning("xmldict")
-        company_data = self.generate_company_data()
-
-        xmldict.update(company_data)
         xmldict.update({"totalPlataA": totalPlataA})
+
+        company_data = self.generate_company_data()
+        xmldict.update(company_data)
+        sistem_tva = 0
+        for val in op1:
+            if val["tip"] == "AI":
+                sistem_tva = 1
+        xmldict["sistemTVA"] = sistem_tva
+
         sign = self.generate_sign()
         xmldict.update(sign)
-        _logger.warning(xmldict)
 
         for key, val in xmldict.items():
             if key not in (
@@ -102,8 +93,6 @@ class Declaratie394(models.TransientModel):
                 "op2",
             ):
                 data_file += """{}="{}" """.format(key, val)
-                _logger.warning(key)
-                _logger.warning(val)
         data_file += """>"""
         data_file += """
     <informatii """
@@ -159,7 +148,7 @@ class Declaratie394(models.TransientModel):
             for key, val in client.items():
                 if key != "op11":
                     data_file += """{}="{}" """.format(key, val)
-            if client["op11"]:
+            if client.get("op11"):
                 data_file += """>"""
                 for line in client["op11"]:
                     data_file += """<op11 """
@@ -178,7 +167,11 @@ class Declaratie394(models.TransientModel):
             data_file += """/>"""
         data_file += """
     </declaratie394>"""
-
+        if not self.optiune and self.schimb_optiune:
+            self.company_id.optiune = True
+        elif self.optiune and self.schimb_optiune:
+            self.company_id.optiune = False
+        _logger.warning(data_file)
         return data_file
 
     def generate_company_data(self):
@@ -186,8 +179,9 @@ class Declaratie394(models.TransientModel):
             cui = int(self.company_id.partner_id.vat_number[2:])
         else:
             cui = int(self.company_id.partner_id.vat_number)
-        vat_payment = self.company_id.partner_id.with_context({
-            "check_date": self.date_to}).check_vat_on_payment()
+        vat_payment = self.company_id.partner_id.with_context(
+            {"check_date": self.date_to}
+        ).check_vat_on_payment()
         data = {
             "cui": cui,
             "den": self.company_id.name,
@@ -221,7 +215,7 @@ class Declaratie394(models.TransientModel):
             "baza9": {"base_9"},
             "TVA9": {"tva_9"},
             "baza5": {"base_5"},
-            "TVA5": {"tva_5"}
+            "TVA5": {"tva_5"},
         }
         inv_type_dict = {
             "baza20": 0,
@@ -231,14 +225,15 @@ class Declaratie394(models.TransientModel):
             "TVA20": 0,
             "TVA19": 0,
             "TVA9": 0,
-            "TVA5": 0
+            "TVA5": 0,
         }
         facturi = []
         invoices1 = self.get_period_invoices(cancel=True)
         invoices = invoices1.filtered(
-            lambda r:
-            r.move_type == "out_refund" or r.state == "cancel" or
-            r.sequence_type in ("autoinv1", "autoinv2"))
+            lambda r: r.move_type == "out_refund"
+            or r.state == "cancel"
+            or r.journal_id.sequence_type in ("autoinv1", "autoinv2")
+        )
 
         for inv in invoices:
             inv_type = False
@@ -247,15 +242,15 @@ class Declaratie394(models.TransientModel):
                     inv_type = 2
                 elif inv.move_type == "out_refund":
                     inv_type = 1
-                elif inv.sequence_type == "autoinv1":
+                elif inv.journal_id.sequence_type == "autoinv1":
                     inv_type = 3
-            elif inv.sequence_type == "autoinv2":
+            elif inv.journal_id.sequence_type == "autoinv2":
                 inv_type = 4
             if inv_type:
                 new_dict = {
                     "tip_factura": inv_type,
                     "serie": inv.sequence_prefix,
-                    "nr": inv.sequence_number
+                    "nr": inv.sequence_number,
                 }
                 if inv_type == 3 or inv_type == 4:
                     new_dict += inv_type_dict
@@ -273,190 +268,210 @@ class Declaratie394(models.TransientModel):
             "base_9": {"base_9"},
             "tva_9": {"tva_9"},
             "base_5": {"base_5"},
-            "tva_5": {"tva_5"}
+            "tva_5": {"tva_5"},
         }
         pay_type_dict = {
-            "base_24": 0, "base_20": 0, "base_19": 0, "base_9": 0, "base_5": 0,
-            "tva_24": 0, "tva_20": 0, "tva_19": 0, "tva_9": 0, "tva_5": 0,
+            "base_24": 0,
+            "base_20": 0,
+            "base_19": 0,
+            "base_9": 0,
+            "base_5": 0,
+            "tva_24": 0,
+            "tva_20": 0,
+            "tva_19": 0,
+            "tva_9": 0,
+            "tva_5": 0,
         }
         payments = []
         types = ["out_invoice", "out_refund", "in_invoice", "in_refund"]
         vatp_invoices = self.get_period_vatp_invoices(types)
         for inv1 in vatp_invoices:
-            pay = {
-                "type": inv1.move_type,
-                "vat_on_payment": inv1.vat_on_payment
-            }
-            pay += pay_type_dict
+            pay = {"type": inv1.move_type, "vat_on_payment": True}
+            pay.update(pay_type_dict)
             vals = self.get_journal_line_vals(inv1)
             for _key, value in tag_config.items():
-                for tagx in value:
-                    pay[tagx] += vals.get(tagx)
+                if _key == "payments":
+                    for inv_pay in value.get("payments"):
+                        for tagx in inv_pay:
+                            pay[tagx] += vals.get(tagx)
             payments.append(pay)
-            _logger.warning("PPPXXXPPPP")
-            _logger.warning(payments)
         return payments
 
-    def _get_op1(self, invoices):
-        def _get_partner_type(invoices):
-            # Get list of invoices by partner_type
-            partner_type = []
-            for part_type in invoices.mapped("partner_type"):
-                partner_type[part_type] = invoices.filtered(
-                    lambda i: i.partner_type == part_type)
-            return partner_type
-
-        def _get_operation_type(invoices):
-            # Get list of invoices by operatiuon_type
-            operation_type = []
-            for oper_type in invoices.mapped("operation_type"):
-                operation_type[oper_type] = invoices.filtered(
-                    lambda i: i.operation_type == oper_type)
-            return operation_type
-
-        def _get_partner_data(new_dict, partner):
-            if partner_type == "1":
-                new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
-            elif partner_type == "2":
-                if partner.vat:
-                    new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
-                else:
-                    if partner.country_id:
-                        new_dict["taraP"] = (
-                            partner.country_id
-                            and partner.country_id.code.upper()
+    def _get_cota_list(self, partner_type, move_lines):
+        cota_list = []
+        for move in move_lines:
+            cotas = self.get_cota_vals(move)
+            for line in cotas:
+                if partner_type != "2":
+                    cota_line = list(
+                        filter(
+                            lambda r: r["cota"] == line.get("cota")
+                            and r["anaf_code"] == line.get("anaf_code"),
+                            cota_list,
                         )
-                    if partner.city:
-                        new_dict["locP"] = partner.city
-                    if partner.state_id:
-                        new_dict["judP"] = (
-                            partner.state_id and partner.state_id.order_code
-                        )
-                    if partner.street:
-                        new_dict["strP"] = partner.street
-                    if partner.street2:
-                        new_dict["strP"] += partner.street2
-                    if partner.street2:
-                        new_dict["detP"] = (
-                            partner.street2 and partner.street2
-                        )
-            else:
-                new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
-            return new_dict
-
-        def _get_cota_list(move_lines):
-            cota_list = []
-            for move in move_lines:
-                cotas = self.get_cota_vals(move)
-                _logger.warning("OOOOOOoooo0000")
-                _logger.warning(cotas)
-                for line in cotas:
-                    cota_line = filter(
-                        lambda r: r["cota"] == line.get("cota") and r["anaf_code"] == line.get("anaf_code"),
-                        cota_list,
                     )
-                    if cota_line:
-                        cota_line["nr_fact"] += line.get("nr_fact")
-                        cota_line["base"] += line.get("base")
-                        cota_line["vat"] += line.get("vat")
-                    else:
-                        cotas.append({
-                            "cota": line.get("cota"),
-                            "nr_fact": line.get("nr_fact"),
-                            "base": line.get("base"),
-                            "vat": line.get("vat"),
-                            "anaf_code": line.get("anaf_code"),
-                        })
-            return cota_list
+                else:
+                    cota_line = list(
+                        filter(
+                            lambda r: r["cota"] == line.get("cota"),
+                            cota_list,
+                        )
+                    )
+                if cota_line:
+                    cota_line = cota_line[0]
+                    cota_line["nr_fact"] += line.get("nr_fact")
+                    cota_line["base"] += int(round(line.get("base")))
+                    cota_line["vat"] += int(round(line.get("vat")))
+                else:
+                    new_vals = {
+                        "cota": line.get("cota"),
+                        "nr_fact": line.get("nr_fact"),
+                        "base": int(round(line.get("base"))),
+                        "vat": int(round(line.get("vat"))),
+                    }
+                    if partner_type != "2":
+                        new_vals["anaf_code"] = line.get("anaf_code")
+                    cota_list.append(new_vals)
+        return cota_list
 
-        def _get_vat_data(part_invoices, partner, partner_type, doc_type=False):
-            denP = partner.name.replace("&", "-").replace('"', "")
-            line = _get_operation_type(part_invoices)
-            res_dict = []
-            for oper_type, move_lines in line.items():
-                partner_dict = {
-                    "tip": oper_type,
-                    "tip_partener": partner_type,
-                    "denP": denP,
-                    "tip_document": doc_type,
-                }
-                partner_dict = _get_partner_data(partner_dict, partner)
-                cota_list = _get_cota_list(move_lines)
-                for line in cota_list:
-                    cota_line = filter(
+    def _get_partner_type(self, invoices):
+        # Get list of invoices by partner_type
+        partner_type = {}
+        for part_type in list(set(invoices.mapped("partner_type"))):
+            partner_type[part_type] = invoices.filtered(
+                lambda i: i.partner_type == part_type
+            )
+        return partner_type
+
+    def _get_operation_type(self, invoices):
+        # Get list of invoices by operation_type
+        operation_type = {}
+        for oper_type in list(set(invoices.mapped("operation_type"))):
+            operation_type[oper_type] = invoices.filtered(
+                lambda i: i.operation_type == oper_type
+            )
+        return operation_type
+
+    def _get_partner_data(self, new_dict, partner, partner_type):
+        if partner_type == "1":
+            new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
+        elif partner_type == "2":
+            if partner.vat:
+                new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
+            else:
+                if partner.country_id:
+                    new_dict["taraP"] = (
+                        partner.country_id and partner.country_id.code.upper()
+                    )
+                if partner.city:
+                    new_dict["locP"] = partner.city
+                if partner.state_id:
+                    new_dict["judP"] = partner.state_id and partner.state_id.order_code
+                if partner.street:
+                    new_dict["strP"] = partner.street
+                if partner.street2:
+                    new_dict["strP"] += partner.street2
+                if partner.street2:
+                    new_dict["detP"] = partner.street2 and partner.street2
+        else:
+            new_dict["cuiP"] = partner._split_vat(partner.vat)[1]
+        return new_dict
+
+    def _get_vat_data(self, part_invoices, partner, partner_type, doc_type=False):
+        denP = partner.name.replace("&", "-").replace('"', "")
+        line = self._get_operation_type(part_invoices)
+        res_dict = []
+        for oper_type, move_lines in line.items():
+            partner_dict = {
+                "tip": oper_type,
+                "tip_partener": partner_type,
+                "denP": denP,
+            }
+            if oper_type == "N" and doc_type:
+                partner_dict["tip_document"] = doc_type
+            partner_dict = self._get_partner_data(partner_dict, partner, partner_type)
+            cota_list = self._get_cota_list(partner_type, move_lines)
+            for line in cota_list:
+                cota_line = list(
+                    filter(
                         lambda r: r["cota"] == line.get("cota"),
                         res_dict,
                     )
-                    if cota_line:
-                        cota_line["nr_fact"] += line.get("nr_fact")
-                        cota_line["base"] += line.get("base")
-                        cota_line["vat"] += line.get("vat")
-                        if cota_line.get("anaf_code") != "":
-                            anaf_code_line = filter(
-                                lambda r: r["anaf_code"] == cota_line.get("anaf_code"),
+                )
+                if cota_line:
+                    cota_line = cota_line[0]
+                    cota_line["nrFact"] += line.get("nr_fact")
+                    cota_line["baza"] += line.get("base")
+                    cota_line["tva"] += line.get("vat")
+                    if cota_line.get("anaf_code", "") != "":
+                        anaf_code_line = list(
+                            filter(
+                                lambda r: r["codPR"] == cota_line.get("anaf_code"),
                                 cota_line["op11"],
                             )
-                            if anaf_code_line:
-                                cota_line["nr_fact"] += cota_line.get("nr_fact")
-                                cota_line["base"] += cota_line.get("base")
-                                cota_line["vat"] += cota_line.get("vat")
-                            else:
-                                cota_line["op11"].append({
-                                    "nr_fact": cota_line.get("nr_fact"),
-                                    "base": cota_line.get("base"),
-                                    "vat": cota_line.get("vat"),
-                                    "anaf_code": cota_line.get("anaf_code"),
-                                })
-                    else:
-                        new_dict = partner_dict.copy()
-                        new_dict.update({
-                            "nr_fact": line.get("nr_fact"),
-                            "base": line.get("base"),
-                            "vat": line.get("vat"),
-                        })
-                        if line.get("anaf_code") != "":
-                            new_dict["op11"] = [{
-                                "nr_fact": line.get("nr_fact"),
-                                "base": line.get("base"),
-                                "vat": line.get("vat"),
-                                "anaf_code": line.get("anaf_code"),
-                            }]
-                        res_dict.append(new_dict)
-            return res_dict
+                        )
+                        if anaf_code_line:
+                            cota_line["nrFactPR"] += cota_line.get("nr_fact")
+                            cota_line["bazaPR"] += cota_line.get("base")
+                            cota_line["tvaPR"] += cota_line.get("vat")
+                        else:
+                            cota_line["op11"].append(
+                                {
+                                    "nrFactPR": cota_line.get("nr_fact"),
+                                    "bazaPR": cota_line.get("base"),
+                                    "tvaPR": cota_line.get("vat"),
+                                    "codPR": cota_line.get("anaf_code"),
+                                }
+                            )
+                else:
+                    new_dict = partner_dict.copy()
+                    new_dict.update(
+                        {
+                            "cota": line.get("cota"),
+                            "nrFact": line.get("nr_fact"),
+                            "baza": line.get("base"),
+                            "tva": line.get("vat"),
+                        }
+                    )
+                    if line.get("anaf_code", "") != "":
+                        new_dict["op11"] = [
+                            {
+                                "nrFactPR": line.get("nr_fact"),
+                                "bazaPR": line.get("base"),
+                                "tvaPR": line.get("vat"),
+                                "codPR": line.get("anaf_code"),
+                            }
+                        ]
+                    res_dict.append(new_dict)
+        return res_dict
 
+    def _get_op1(self, invoices):
         self.ensure_one()
         op1 = []
-        _logger.warning("Partener Oper Type")
-        partner_types = _get_partner_type(invoices)
-        _logger.warning(partner_types)
+        partner_types = self._get_partner_type(invoices)
         for partner_type, part_types_inv in partner_types.items():
             partners = part_types_inv.mapped("partner_id")
             for partner in partners:
-                _logger.warning("Partener")
-                _logger.warning(partner.name)
                 part_invoices = part_types_inv.filtered(
                     lambda r: r.partner_id.id == partner.id
                 )
                 new_dict = {}
                 if partner_type == "2":
-                    doc_types = part_invoices.mapped("invoice_origin_d394")
-                    _logger.warning(doc_types)
+                    doc_types = list(set(part_invoices.mapped("invoice_origin_d394")))
                     for doc_type in doc_types:
                         doctype_invoices = part_invoices.filtered(
                             lambda r: r.invoice_origin_d394 == doc_type
                         )
-                        new_dict = _get_vat_data(
+                        new_dict = self._get_vat_data(
                             doctype_invoices, partner, partner_type, doc_type
                         )
-                        op1 += new_dict
                 else:
                     doctype_invoices = part_invoices
-                    new_dict = _get_vat_data(
-                        doctype_invoices, partner, partner_type)
+                    new_dict = self._get_vat_data(
+                        doctype_invoices, partner, partner_type
+                    )
                 if new_dict:
-                    _logger.warning(new_dict)
                     op1 += new_dict
-        _logger.warning(op1)
         return op1
 
     def compute_invoice_taxes_ammount(self, invoices):
@@ -470,12 +485,11 @@ class Declaratie394(models.TransientModel):
                 found = False
                 for group_f in ress:
                     if group_f[0] == group[0]:
-                        group_f[1]["base"] += group[1]["base"]
-                        group_f[1]["amount"] += group[1]["amount"]
+                        group_f[1]["base"] += group[1]
+                        group_f[1]["amount"] += group[2]
                         found = True
                 if not found:
                     ress.append(group)
-        _logger.warning(ress)
         return ress
 
     def _get_op2(self, receipts):
@@ -484,65 +498,51 @@ class Declaratie394(models.TransientModel):
         months = {
             fields.Date.from_string(receipt.invoice_date).month for receipt in receipts
         }
-
-        nrAMEF = len({receipt.journal_id.id for receipt in receipts})
-        nrBF = len(receipts)
-        total = 0
-        baza20 = baza19 = baza9 = baza5 = 0
-        tva20 = tva19 = tva9 = tva5 = 0
-        cota_groups = self.compute_invoice_taxes_ammount(receipts)
-
-        for cota_group in cota_groups:
-            cota_group_dict = cota_group[1]
-            if cota_group[0].name == "TVA 19%":
-                baza19 = cota_group_dict["base"]
-                tva19 = cota_group_dict["amount"]
-            if cota_group[0].name == "TVA 9%":
-                baza9 = cota_group_dict["base"]
-                tva9 = cota_group_dict["amount"]
-            if cota_group[0].name == "TVA 5%":
-                baza5 = cota_group_dict["base"]
-                tva5 = cota_group_dict["amount"]
-
-            _logger.warning(cota_group[1])
-            op2.append(
-                {
-                    "tip_op2": oper_type,
-                    "luna": list(months)[0],
-                    "nrAMEF": int(round(nrAMEF)),
-                    "nrBF": int(round(nrBF)),
-                    "total": int(
-                        round(
-                            baza20
-                            + baza19
-                            + baza9
-                            + baza5
-                            + tva20
-                            + tva19
-                            + tva9
-                            + tva5
-                        )
-                    ),
-                    "baza20": int(round(baza20)),
-                    "baza19": int(round(baza19)),
-                    "baza9": int(round(baza9)),
-                    "baza5": int(round(baza5)),
-                    "TVA20": int(round(tva20)),
-                    "TVA19": int(round(tva19)),
-                    "TVA9": int(round(tva9)),
-                    "TVA5": int(round(tva5)),
-                }
+        for month in months:
+            month_rec = receipts.filtered(
+                lambda r: fields.Date.from_string(r.invoice_date).month == month
             )
+            nrAMEF = len({receipt.journal_id.id for receipt in month_rec})
+            nrBF = len(month_rec)
+            total = 0
+            baza20 = baza19 = baza9 = baza5 = 0
+            tva20 = tva19 = tva9 = tva5 = 0
+            for receipt in month_rec:
+                line_vals = self.get_journal_line_vals(receipt)
+                total += line_vals.get("total")
+                baza19 += line_vals.get("base_19")
+                tva19 += line_vals.get("tva_19")
+                baza9 += line_vals.get("base_9")
+                tva9 += line_vals.get("tva_9")
+                baza5 += line_vals.get("base_5")
+                tva5 += line_vals.get("tva_5")
+            if month_rec:
+                op2.append(
+                    {
+                        "tip_op2": oper_type,
+                        "luna": list(months)[0],
+                        "nrAMEF": int(round(nrAMEF)),
+                        "nrBF": int(round(nrBF)),
+                        "total": int(round(total)),
+                        "baza20": int(round(baza20)),
+                        "baza19": int(round(baza19)),
+                        "baza9": int(round(baza9)),
+                        "baza5": int(round(baza5)),
+                        "TVA20": int(round(tva20)),
+                        "TVA19": int(round(tva19)),
+                        "TVA9": int(round(tva9)),
+                        "TVA5": int(round(tva5)),
+                    }
+                )
         return op2
 
-    def _generate_rezumat1(self, invoices, payments, op1, op2):
+    def _generate_rezumat1(self, invoices, op1):
         self.ensure_one()
         rezumat1 = []
         partner_types = {x["tip_partener"] for x in op1}
         for partner_type in partner_types:
             cotas = {x["cota"] for x in op1 if x["tip_partener"] == partner_type}
             for cota in cotas:
-                op1s = []
                 if partner_type == "2":
                     doc_types = {
                         x["tip_document"]
@@ -550,9 +550,6 @@ class Declaratie394(models.TransientModel):
                         if x["tip_partener"] == partner_type and x["tip"] == "N"
                     }
                     for doc_type in doc_types:
-                        _logger.warning("RRRezumaTTTT")
-                        _logger.warning(doc_types)
-
                         op1s = [
                             x
                             for x in op1
@@ -562,10 +559,7 @@ class Declaratie394(models.TransientModel):
                             and x["tip"] == "N"
                         ]
                         if op1s:
-                            rezumat1.append(self.generate_rezumat1(invoices, op1s))
-                            _logger.warning(" N")
-                            _logger.warning(op1s)
-                            _logger.warning(self.generate_rezumat1(invoices, op1s))
+                            rezumat1.append(self.generate_rezumat1(op1s))
                     op1s = [
                         x
                         for x in op1
@@ -574,10 +568,7 @@ class Declaratie394(models.TransientModel):
                         and x["tip"] != "N"
                     ]
                     if op1s:
-                        rezumat1.append(self.generate_rezumat1(invoices, op1s))
-                        _logger.warning("No N")
-                        _logger.warning(op1s)
-                        _logger.warning(self.generate_rezumat1(invoices, op1s))
+                        rezumat1.append(self.generate_rezumat1(op1s))
                 else:
                     op1s = [
                         x
@@ -585,160 +576,84 @@ class Declaratie394(models.TransientModel):
                         if x["tip_partener"] == partner_type and x["cota"] == cota
                     ]
                     if op1s:
-                        rezumat1.append(self.generate_rezumat1(invoices, op1s))
-                        _logger.warning("Partenr 1")
-                        _logger.warning(op1s)
-                        _logger.warning(self.generate_rezumat1(invoices, op1s))
-
+                        rezumat1.append(self.generate_rezumat1(op1s))
         return rezumat1
 
-    def generate_rezumat1(self, invoices, op1s):
+    def get_sum_conditional(self, op1s, tag, field, value):
+        result = 0
+        try:
+            result = int(round(sum(op[tag] for op in op1s if op[field] == value)))
+        except Exception:
+            pass
+        return result
+
+    def generate_rezumat1(self, op1s):
         self.ensure_one()
-        obj_inv = self.env["account.move"]
-        obj_inv_line = self.env["account.move.line"]
-        obj_d394_code = self.env["anaf.product.code"]
         partner_type = op1s[0]["tip_partener"]
-        oper_type = op1s[0]["tip"]
         cota_amount = int(op1s[0]["cota"])
         rezumat1 = {}
         rezumat1["tip_partener"] = op1s[0]["tip_partener"]
         rezumat1["cota"] = op1s[0]["cota"]
         if cota_amount != 0:
-            rezumat1["facturiL"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "L"))
-            )
-            rezumat1["bazaL"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "L"))
-            )
-            rezumat1["tvaL"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "L"))
-            )
+            rezumat1["facturiL"] = self.get_sum_conditional(op1s, "nrFact", "tip", "L")
+            rezumat1["bazaL"] = self.get_sum_conditional(op1s, "baza", "tip", "L")
+            rezumat1["tvaL"] = self.get_sum_conditional(op1s, "tva", "tip", "L")
         if partner_type == "1" and cota_amount == 0:
-            rezumat1["facturiLS"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "LS"))
+            rezumat1["facturiLS"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "LS"
             )
-            rezumat1["bazaLS"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "LS"))
-            )
+            rezumat1["bazaLS"] = self.get_sum_conditional(op1s, "baza", "tip", "LS")
         if partner_type == "1" and cota_amount != 0:
-            rezumat1["facturiA"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "A"))
-            )
-            rezumat1["bazaA"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "A"))
-            )
-            rezumat1["tvaA"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "A"))
-            )
+            rezumat1["facturiA"] = self.get_sum_conditional(op1s, "nrFact", "tip", "A")
+            rezumat1["bazaA"] = self.get_sum_conditional(op1s, "baza", "tip", "A")
+            rezumat1["tvaA"] = self.get_sum_conditional(op1s, "tva", "tip", "A")
         if partner_type == "1" and cota_amount != 0:
-            rezumat1["facturiAI"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "AI"))
+            rezumat1["facturiAI"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "AI"
             )
-            rezumat1["bazaAI"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "AI"))
-            )
-            rezumat1["tvaAI"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "AI"))
-            )
+            rezumat1["bazaAI"] = self.get_sum_conditional(op1s, "baza", "tip", "AI")
+            rezumat1["tvaAI"] = self.get_sum_conditional(op1s, "tva", "tip", "AI")
         if partner_type in ("1", "3", "4") and cota_amount == 0:
-            rezumat1["facturiAS"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "AS"))
+            rezumat1["facturiAS"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "AS"
             )
-            rezumat1["bazaAS"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "AS"))
-            )
+            rezumat1["bazaAS"] = self.get_sum_conditional(op1s, "baza", "tip", "AS")
         if (partner_type == "1") and (cota_amount == 0):
-            rezumat1["facturiV"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "V"))
-            )
-            rezumat1["bazaV"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "V"))
-            )
-            rezumat1["tvaV"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "V"))
-            )
+            rezumat1["facturiV"] = self.get_sum_conditional(op1s, "nrFact", "tip", "V")
+            rezumat1["bazaV"] = self.get_sum_conditional(op1s, "baza", "tip", "V")
+            rezumat1["tvaV"] = self.get_sum_conditional(op1s, "tva", "tip", "V")
         if (partner_type != "2") and (cota_amount != 0):
-            rezumat1["facturiC"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "C"))
-            )
-            rezumat1["bazaC"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "C"))
-            )
-            rezumat1["tvaC"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "C"))
-            )
+            rezumat1["facturiC"] = self.get_sum_conditional(op1s, "nrFact", "tip", "C")
+            rezumat1["bazaC"] = self.get_sum_conditional(op1s, "baza", "tip", "C")
+            rezumat1["tvaC"] = self.get_sum_conditional(op1s, "tva", "tip", "C")
         if op1s[0]["tip_partener"] == "2" and ("tip_document" in op1s[0]):
-
-            rezumat1["facturiN"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "N"))
-            )
+            rezumat1["facturiN"] = self.get_sum_conditional(op1s, "nrFact", "tip", "N")
             rezumat1["document_N"] = op1s[0]["tip_document"]
+            rezumat1["bazaN"] = self.get_sum_conditional(op1s, "baza", "tip", "N")
+        op1s = [x for x in op1s if "op11" in x]
+        rez_detaliu = self._get_detaliu(op1s, partner_type)
 
-            rezumat1["bazaN"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "N"))
-            )
+        rezumat1["detaliu"] = rez_detaliu
+        return rezumat1
+
+    def _get_detaliu(self, op1s, partner_type):
+        obj_d394_code = self.env["anaf.product.code"]
         rez_detaliu = []
         for op1 in op1s:
-            if op1["op11"]:
-                for line in op1["op11"]:
-                    code = line["codPR"]
-                    new_code = obj_d394_code.search([("name", "=", code)])
-                    if len(new_code) >= 2:
-                        new_code = new_code[0]
-                    if new_code and new_code.parent_id:
-                        new_code = new_code.parent_id
-                    if rez_detaliu:
-                        found = False
-                        for val in rez_detaliu:
-                            if new_code.name == val["bun"]:
-                                found = True
-                        if found:
-                            for val in rez_detaliu:
-                                if new_code.name == val["bun"]:
-                                    if op1["tip"] == "L":
-                                        val["nrLiv"] += int(round(line["nrFactPR"]))
-                                        val["bazaLiv"] += int(round(line["bazaPR"]))
-                                        val["tvaLiv"] += int(round(line["tvaPR"]))
-                                    if op1["tip"] == "V" and op1["cota"] == 0:
-                                        val["nrLivV"] += int(round(line["nrFactPR"]))
-                                        val["bazaLivV"] += int(round(line["bazaPR"]))
-                                    #    val['tvaLivV'] += int(
-                                    #        round(line['tvaPR']))
-                                    if op1["tip"] == "A":
-                                        val["nrAchiz"] += int(round(line["nrFactPR"]))
-                                        val["bazaAchiz"] += int(round(line["bazaPR"]))
-                                        val["tvaAchiz"] += int(round(line["tvaPR"]))
-                                    if op1["tip"] == "AI":
-                                        val["nrAchizAI"] += int(round(line["nrFactPR"]))
-                                        val["bazaAchizAI"] += int(round(line["bazaPR"]))
-                                        val["tvaAchizAI"] += int(round(line["tvaPR"]))
-                                    if op1["tip"] == "C" and op1["cota"] != 0:
-                                        val["nrAchizC"] += int(round(line["nrFactPR"]))
-                                        val["bazaAchizC"] += int(round(line["bazaPR"]))
-                                        val["tvaAchizC"] += int(round(line["tvaPR"]))
-                                    if op1["tip"] == "N" and partner_type == "2":
-                                        val["nrN"] += int(round(line["nrFactPR"]))
-                                        val["valN"] += int(round(line["bazaPR"]))
-                        else:
-                            val = {}
-                            val["bun"] = new_code.name
-                            if op1["tip"] == "L":
-                                val["nrLiv"] = val["bazaLiv"] = 0
-                                val["tvaLiv"] = 0
-                            if op1["tip"] == "V" and op1["cota"] == 0:
-                                val["nrLivV"] = val["bazaLivV"] = 0
-                            #    val['tvaLivV'] = 0
-                            if op1["tip"] == "A":
-                                val["nrAchiz"] = val["bazaAchiz"] = 0
-                                val["tvaAchiz"] = 0
-                            if op1["tip"] == "AI":
-                                val["nrAchizAI"] = val["bazaAchizAI"] = 0
-                                val["tvaAchizAI"] = 0
-                            if op1["tip"] == "C" and op1["cota"] != 0:
-                                val["nrAchizC"] = val["bazaAchizC"] = 0
-                                val["tvaAchizC"] = 0
-                            if partner_type == "2":
-                                val["nrN"] = val["valN"] = 0
+            for line in op1["op11"]:
+                code = line["codPR"]
+                new_code = obj_d394_code.search([("name", "=", code)])
+                if len(new_code) >= 2:
+                    new_code = new_code[0]
+                if new_code and new_code.parent_id:
+                    new_code = new_code.parent_id
+                found = False
+                for val in rez_detaliu:
+                    if new_code.name == val["bun"]:
+                        found = True
+                if found:
+                    for val in rez_detaliu:
+                        if new_code.name == val["bun"]:
                             if op1["tip"] == "L":
                                 val["nrLiv"] += int(round(line["nrFactPR"]))
                                 val["bazaLiv"] += int(round(line["bazaPR"]))
@@ -746,8 +661,7 @@ class Declaratie394(models.TransientModel):
                             if op1["tip"] == "V" and op1["cota"] == 0:
                                 val["nrLivV"] += int(round(line["nrFactPR"]))
                                 val["bazaLivV"] += int(round(line["bazaPR"]))
-                            #    val['tvaLivV'] += int(
-                            #        round(line['tvaPR']))
+                                # val['tvaLivV'] += int(round(line['tvaPR']))
                             if op1["tip"] == "A":
                                 val["nrAchiz"] += int(round(line["nrFactPR"]))
                                 val["bazaAchiz"] += int(round(line["bazaPR"]))
@@ -763,54 +677,34 @@ class Declaratie394(models.TransientModel):
                             if op1["tip"] == "N" and partner_type == "2":
                                 val["nrN"] += int(round(line["nrFactPR"]))
                                 val["valN"] += int(round(line["bazaPR"]))
-                            rez_detaliu.append(val)
-                    else:
-                        val = {}
-                        val["bun"] = new_code.name
-                        if op1["tip"] == "L":
-                            val["nrLiv"] = val["bazaLiv"] = 0
-                            val["tvaLiv"] = 0
-                        if op1["tip"] == "V" and op1["cota"] == 0:
-                            val["nrLivV"] = val["bazaLivV"] = 0
-                        #    val['tvaLivV'] = 0
-                        if op1["tip"] == "A":
-                            val["nrAchiz"] = val["bazaAchiz"] = 0
-                            val["tvaAchiz"] = 0
-                        if op1["tip"] == "AI":
-                            val["nrAchizAI"] = val["bazaAchizAI"] = 0
-                            val["tvaAchizAI"] = 0
-                        if op1["tip"] == "C" and op1["cota"] != 0:
-                            val["nrAchizC"] = val["bazaAchizC"] = 0
-                            val["tvaAchizC"] = 0
-                        if partner_type == "2":
-                            val["nrN"] = val["valN"] = 0
-
-                        if op1["tip"] == "L":
-                            val["nrLiv"] += int(round(line["nrFactPR"]))
-                            val["bazaLiv"] += int(round(line["bazaPR"]))
-                            val["tvaLiv"] += int(round(line["tvaPR"]))
-                        if op1["tip"] == "V" and op1["cota"] == 0:
-                            val["nrLivV"] += int(round(line["nrFactPR"]))
-                            val["bazaLivV"] += int(round(line["bazaPR"]))
-                        #    val['tvaLivV'] += int(round(line['tvaPR']))
-                        if op1["tip"] == "A":
-                            val["nrAchiz"] += int(round(line["nrFactPR"]))
-                            val["bazaAchiz"] += int(round(line["bazaPR"]))
-                            val["tvaAchiz"] += int(round(line["tvaPR"]))
-                        if op1["tip"] == "AI":
-                            val["nrAchizAI"] += int(round(line["nrFactPR"]))
-                            val["bazaAchizAI"] += int(round(line["bazaPR"]))
-                            val["tvaAchizAI"] += int(round(line["tvaPR"]))
-                        if op1["tip"] == "C" and op1["cota"] != 0:
-                            val["nrAchizC"] += int(round(line["nrFactPR"]))
-                            val["bazaAchizC"] += int(round(line["bazaPR"]))
-                            val["tvaAchizC"] += int(round(line["tvaPR"]))
-                        if op1["tip"] == "N" and partner_type == "2":
-                            val["nrN"] += int(round(line["nrFactPR"]))
-                            val["valN"] += int(round(line["bazaPR"]))
-                        rez_detaliu.append(val)
-        rezumat1["detaliu"] = rez_detaliu
-        return rezumat1
+                else:
+                    val = {}
+                    val["bun"] = new_code.name
+                    if op1["tip"] == "L":
+                        val["nrLiv"] = int(round(line["nrFactPR"]))
+                        val["bazaLiv"] = int(round(line["bazaPR"]))
+                        val["tvaLiv"] = int(round(line["tvaPR"]))
+                    if op1["tip"] == "V" and op1["cota"] == 0:
+                        val["nrLivV"] = int(round(line["nrFactPR"]))
+                        val["bazaLivV"] = int(round(line["bazaPR"]))
+                        # val['tvaLivV'] = int(round(line['tvaPR']))
+                    if op1["tip"] == "A":
+                        val["nrAchiz"] = int(round(line["nrFactPR"]))
+                        val["bazaAchiz"] = int(round(line["bazaPR"]))
+                        val["tvaAchiz"] = int(round(line["tvaPR"]))
+                    if op1["tip"] == "AI":
+                        val["nrAchizAI"] = int(round(line["nrFactPR"]))
+                        val["bazaAchizAI"] = int(round(line["bazaPR"]))
+                        val["tvaAchizAI"] = int(round(line["tvaPR"]))
+                    if op1["tip"] == "C" and op1["cota"] != 0:
+                        val["nrAchizC"] = int(round(line["nrFactPR"]))
+                        val["bazaAchizC"] = int(round(line["bazaPR"]))
+                        val["tvaAchizC"] = int(round(line["tvaPR"]))
+                    if op1["tip"] == "N" and partner_type == "2":
+                        val["nrN"] = int(round(line["nrFactPR"]))
+                        val["valN"] = int(round(line["bazaPR"]))
+                    rez_detaliu.append(val)
+        return rez_detaliu
 
     def _get_inv_lines(self, invoices, sel_cota, domain):
         obj_inv_line = self.env["account.move.line"]
@@ -823,9 +717,7 @@ class Declaratie394(models.TransientModel):
             for inv_line in inv_lines:
                 cotas += [tax for tax in inv_line.tax_ids]
             filtered_inv_lines = []
-            cota_amount = 0
             for cota in cotas:
-                cota_inv = inv_lines.filtered(lambda r: cota.id in r.tax_ids.ids)
                 cota_amount = 0
                 if cota.amount_type == "percent":
                     if cota.children_tax_ids:
@@ -845,14 +737,10 @@ class Declaratie394(models.TransientModel):
 
     def generate_rezumat2(self, sel_cota, invoices, op1s, op2):
         self.ensure_one()
-        obj_inv = self.env["account.move"]
-        obj_inv_line = self.env["account.move.line"]
         rezumat2 = {}
         if op1s:
-            oper_type = op1s[0]["tip"]
+            # oper_type = op1s[0]["tip"]
             cota_amount = int(op1s[0]["cota"])
-            _logger.warning("Rezumat 2")
-            _logger.warning(op1s)
             rezumat2["cota"] = op1s[0]["cota"]
             # To review
             rezumat2["bazaFSLcod"] = 0
@@ -869,115 +757,95 @@ class Declaratie394(models.TransientModel):
 
             rezumat2["bazaL_PF"] = 0
             rezumat2["tvaL_PF"] = 0
-
-            fr_inv = (
-                domain
-            ) = "r.operation_type == 'L' and \
-                r.fiscal_receipt is True"
-            inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
-            if inv_lines:
-                rezumat2["bazaBFAI"] = int(
-                    round(
-                        sum(
-                            line.price_subtotal
-                            for line in inv_lines
-                            if not line.invoice_id.journal_id.fiscal_receipt
-                        )
-                    )
-                )
-                rezumat2["TVABFAI"] = int(
-                    round(
-                        sum(
-                            line.price_normal_taxes
-                            and line.price_normal_taxes
-                            or line.price_taxes
-                            for line in inv_lines
-                            if not line.invoice_id.journal_id.fiscal_receipt
-                        )
-                    )
-                )
-            rezumat2["nrFacturiL"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "L"))
+            # TODO
+            # fr_inv = (
+            #    domain
+            # ) = "r.operation_type == 'L' and \
+            #    r.fiscal_receipt is True"
+            # inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
+            # if inv_lines:
+            #    rezumat2["bazaBFAI"] = int(
+            #        round(
+            #            sum(
+            #                line.price_subtotal
+            #                for line in inv_lines
+            #                if not line.invoice_id.journal_id.fiscal_receipt
+            #            )
+            #        )
+            #    )
+            #    rezumat2["TVABFAI"] = int(
+            #        round(
+            #            sum(
+            #                line.price_normal_taxes
+            #                and line.price_normal_taxes
+            #                or line.price_taxes
+            #                for line in inv_lines
+            #                if not line.invoice_id.journal_id.fiscal_receipt
+            #            )
+            #        )
+            #    )
+            rezumat2["nrFacturiL"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "L"
             )
-            rezumat2["bazaL"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "L"))
+            rezumat2["bazaL"] = self.get_sum_conditional(op1s, "baza", "tip", "L")
+            rezumat2["tvaL"] = self.get_sum_conditional(op1s, "tva", "tip", "L")
+            rezumat2["nrFacturiA"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "A"
+            ) + self.get_sum_conditional(op1s, "nrFact", "tip", "C")
+            rezumat2["bazaA"] = self.get_sum_conditional(
+                op1s, "baza", "tip", "A"
+            ) + self.get_sum_conditional(op1s, "baza", "tip", "C")
+            rezumat2["tvaA"] = self.get_sum_conditional(
+                op1s, "tva", "tip", "A"
+            ) + self.get_sum_conditional(op1s, "tva", "tip", "C")
+            rezumat2["nrFacturiAI"] = self.get_sum_conditional(
+                op1s, "nrFact", "tip", "AI"
             )
-            rezumat2["tvaL"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "L"))
-            )
-            rezumat2["nrFacturiA"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] in ("A", "C")))
-            )
-            rezumat2["bazaA"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] in ("A", "C")))
-            )
-            rezumat2["tvaA"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] in ("A", "C")))
-            )
-            rezumat2["nrFacturiAI"] = int(
-                round(sum(op["nrFact"] for op in op1s if op["tip"] == "AI"))
-            )
-            rezumat2["bazaAI"] = int(
-                round(sum(op["baza"] for op in op1s if op["tip"] == "AI"))
-            )
-            rezumat2["tvaAI"] = int(
-                round(sum(op["tva"] for op in op1s if op["tip"] == "AI"))
-            )
+            rezumat2["bazaAI"] = self.get_sum_conditional(op1s, "baza", "tip", "AI")
+            rezumat2["tvaAI"] = self.get_sum_conditional(op1s, "tva", "tip", "AI")
             if cota_amount == 5:
-                rezumat2["baza_incasari_i1"] = int(
-                    round(sum(x["baza5"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["baza_incasari_i1"] = self.get_sum_conditional(
+                    op2, "baza5", "tip_op2", "I1"
                 )
-                rezumat2["tva_incasari_i1"] = int(
-                    round(sum(x["TVA5"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["tva_incasari_i1"] = self.get_sum_conditional(
+                    op2, "TVA5", "tip_op2", "I1"
                 )
-                rezumat2["baza_incasari_i2"] = int(
-                    round(sum(x["baza5"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["baza_incasari_i2"] = self.get_sum_conditional(
+                    op2, "baza5", "tip_op2", "I2"
                 )
-                rezumat2["tva_incasari_i2"] = int(
-                    round(sum(x["TVA5"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["tva_incasari_i2"] = self.get_sum_conditional(
+                    op2, "TVA5", "tip_op2", "I2"
                 )
             if cota_amount == 9:
-                rezumat2["baza_incasari_i1"] = int(
-                    round(sum(x["baza9"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["baza_incasari_i1"] = self.get_sum_conditional(
+                    op2, "baza9", "tip_op2", "I1"
                 )
-                rezumat2["tva_incasari_i1"] = int(
-                    round(sum(x["TVA9"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["tva_incasari_i1"] = self.get_sum_conditional(
+                    op2, "TVA9", "tip_op2", "I1"
                 )
-                rezumat2["baza_incasari_i2"] = int(
-                    round(sum(x["baza9"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["baza_incasari_i2"] = self.get_sum_conditional(
+                    op2, "baza9", "tip_op2", "I2"
                 )
-                rezumat2["tva_incasari_i2"] = int(
-                    round(sum(x["TVA9"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["tva_incasari_i2"] = self.get_sum_conditional(
+                    op2, "TVA9", "tip_op2", "I2"
                 )
             if cota_amount == 19:
-                rezumat2["baza_incasari_i1"] = int(
-                    round(sum(x["baza19"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["baza_incasari_i1"] = self.get_sum_conditional(
+                    op2, "baza19", "tip_op2", "I1"
                 )
-                rezumat2["tva_incasari_i1"] = int(
-                    round(sum(x["TVA19"] for x in op2 if x["tip_op2"] == "I1"))
+                rezumat2["tva_incasari_i1"] = self.get_sum_conditional(
+                    op2, "TVA19", "tip_op2", "I1"
                 )
-                rezumat2["baza_incasari_i2"] = int(
-                    round(sum(x["baza19"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["baza_incasari_i2"] = self.get_sum_conditional(
+                    op2, "baza19", "tip_op2", "I2"
                 )
-                rezumat2["tva_incasari_i2"] = int(
-                    round(sum(x["TVA19"] for x in op2 if x["tip_op2"] == "I2"))
+                rezumat2["tva_incasari_i2"] = self.get_sum_conditional(
+                    op2, "TVA19", "tip_op2", "I2"
                 )
-            if cota_amount == 20:
-                rezumat2["baza_incasari_i1"] = int(
-                    round(sum(x["baza20"] for x in op2 if x["tip_op2"] == "I1"))
-                )
-                rezumat2["tva_incasari_i1"] = int(
-                    round(sum(x["TVA20"] for x in op2 if x["tip_op2"] == "I1"))
-                )
-                rezumat2["baza_incasari_i2"] = int(
-                    round(sum(x["baza20"] for x in op2 if x["tip_op2"] == "I2"))
-                )
-                rezumat2["tva_incasari_i2"] = int(
-                    round(sum(x["TVA20"] for x in op2 if x["tip_op2"] == "I2"))
-                )
-            domain = "r.operation_type == 'L' and \
-                r.partner_type == '2' and r.amount_total <= 10000"
-            inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
+            # TODO
+            # domain = "r.operation_type == 'L' and \
+            #    r.partner_type == '2' and r.amount_total <= 10000"
+            # inv_lines = self._get_inv_lines(invoices, cota_amount, domain)
         else:
             rezumat2["cota"] = sel_cota
             rezumat2["bazaFSLcod"] = 0
@@ -1007,7 +875,7 @@ class Declaratie394(models.TransientModel):
             rezumat2["tvaL_PF"] = 0
         return rezumat2
 
-    def _generate_rezumat2(self, invoices, payments, op1, op2):
+    def _generate_rezumat2(self, invoices, op1, op2):
         self.ensure_one()
         rezumat2 = []
         cotas = set([x["cota"] for x in op1 if x["cota"] != 0] + [5, 9, 19, 20])
@@ -1118,8 +986,6 @@ class Declaratie394(models.TransientModel):
         return lista
 
     def _get_inv_series(self, invoices):
-
-        regex = re.compile("[^a-zA-Z]")
         ctx = self._context.copy()
         year, month = self.get_year_month()
         ctx["fiscalyear_id"] = year
@@ -1138,24 +1004,16 @@ class Declaratie394(models.TransientModel):
         journals = self.env["account.journal"]
         journal_ids = set(invoices.mapped("journal_id.id"))
         seq_dict = []
-        _logger.warning(journal_ids)
         for journal in journals.browse(journal_ids):
 
             journal_invoices = invoices.filtered(
                 lambda r: r.journal_id.id == journal.id
             )
             first_name = min(journal_invoices._origin.mapped("name"))
-            _logger.warning(journal_invoices)
-            _logger.warning(journal_invoices._origin.mapped("name"))
-            record_first_name = journal_invoices.filtered(
-                lambda r: r.name == first_name
-            )
-            _logger.warning(record_first_name[0])
             formatt, format_values = journal_invoices._get_sequence_format_param(
                 first_name
             )
             type_reset = journal_invoices._deduce_sequence_number_reset(first_name)
-            _logger.warning(str(formatt).split("{seq:")[0].format(**format_values))
 
             no_digit = format_values["seq_length"]
             nr_init = 0

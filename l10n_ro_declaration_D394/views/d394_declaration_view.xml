@@ -26,6 +26,16 @@
                         options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
                     />
                 </group>
+                <group>
+                    <group>
+                        <field name="optiune" />
+                        <field name="schimb_optiune" />
+                    </group>
+                    <group>
+                        <field name="prsAfiliat" />
+                        <field name="solicit" />
+                    </group>
+                </group>
                 <group name="filters">
                     <group name="date_range">
                         <field

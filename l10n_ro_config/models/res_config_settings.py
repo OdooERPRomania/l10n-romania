@@ -98,13 +98,13 @@ class ResConfigSettings(models.TransientModel):
         "Account Inventory Sheet Report",
         help="This module will add the Inventory Sheet report.",
     )
-    module_l10n_ro_account_report_D300 = fields.Boolean(
+    module_l10n_ro_declaration_D300 = fields.Boolean(
         "Account D300 Report", help="This module will add the D300 report."
     )
-    module_l10n_ro_account_report_D390 = fields.Boolean(
+    module_l10n_ro_declaration_D390 = fields.Boolean(
         "Account D390 Report", help="This module will add the D390 report."
     )
-    module_l10n_ro_account_report_D394 = fields.Boolean(
+    module_l10n_ro_declaration_D394 = fields.Boolean(
         "Account D394 Report", help="This module will add the D394 report."
     )
     module_l10n_ro_intrastat = fields.Boolean(

@@ -153,7 +153,7 @@ class AnafMixin(models.AbstractModel):
             self.env["account.move.line"]
             .search(
                 [
-                    ("move_id.state", "=", "posted"),cota
+                    ("move_id.state", "=", "posted"),
                     ("move_id.move_type", "in", types),
                     ("move_id.invoice_date", ">=", self.date_from),
                     ("move_id.invoice_date", "<=", self.date_to),
@@ -373,12 +373,12 @@ class AnafMixin(models.AbstractModel):
                 vals["payments"].append(payment)
         return vals
 
-    def get_journal_line_vals(self, invoice, vals={}, journal_type=True, sign=1):
-        if vals == {}:
+    def get_journal_line_vals(self, invoice, vals=False, journal_type=True, sign=1):
+        if not vals:
             journal_columns = self.get_journal_columns()
             sumed_colums = self.get_sumed_columns()
             vals = self.add_new_row(journal_columns, sumed_colums)
-        vatp_tags = ["tva_neex", "base_exig", "base_neex", "tva_exig"]
+        # vatp_tags = ["tva_neex", "base_exig", "base_neex", "tva_exig"]
         all_known_tags = self.get_all_tags()
         (
             country_code,
@@ -454,33 +454,39 @@ class AnafMixin(models.AbstractModel):
         return empty_row
 
     def get_cota_vals(self, invoice, journal_type=True, sign=1):
-        def _update_cotas(cotas, tax_ids, new_sign, anaf_code=""):
+        def _update_cotas(line, cotas, tax_ids, new_sign, anaf_code=False):
+            if not anaf_code:
+                anaf_code = ""
             for tax in tax_ids:
-                cota = tax.mapped("amount")
-                taxes = tax.compute_all(
-                    line.tax_base_amount)["taxes"][tax.id]
-                cota_line = filter(
-                    lambda r: r["cota"] == cota and r["anaf_code"] == anaf_code,
-                    cotas,
+                cota = int(tax.mapped("amount")[0])
+                res = tax.compute_all(line.balance)
+                amount = sum(tax.get("amount", 0.0) for tax in res["taxes"])
+                cota_line = list(
+                    filter(
+                        lambda r: r["cota"] == cota and r["anaf_code"] == anaf_code,
+                        cotas,
+                    )
                 )
                 if cota_line:
-                    cota_line["base"] += new_sign * line.tax_base_amount
-                    cota_line["vat"] += new_sign * taxes["amount"]
+                    cota_line[0]["base"] += new_sign * line.balance
+                    cota_line[0]["vat"] += new_sign * amount
                 else:
-                    cotas.append({
-                        "cota": cota,
-                        "nr_fact": 1,
-                        "base": new_sign * line.tax_base_amount,
-                        "vat": new_sign * taxes["amount"],
-                        "anaf_code": anaf_code
-                    })
+                    cotas.append(
+                        {
+                            "cota": cota,
+                            "nr_fact": 1,
+                            "base": new_sign * line.balance,
+                            "vat": new_sign * amount,
+                            "anaf_code": anaf_code,
+                        }
+                    )
             return cotas
 
         new_sign = sign
         if journal_type and invoice.move_type in [
-            "in_invoice",
+            "out_invoice",
+            "out_receipt",
             "in_refund",
-            "in_receipt",
         ]:
             new_sign = -1 * sign
         cotas = []
@@ -488,17 +494,17 @@ class AnafMixin(models.AbstractModel):
             anaf_code = line.product_id.anaf_code_id.name
             if new_sign > 0:
                 tax_ids = line.tax_ids.filtered(
-                    lambda tax: tax.amount_type == "percent")
-                cotas = _update_cotas(cotas, tax_ids, new_sign, anaf_code)
+                    lambda tax: tax.amount_type == "percent"
+                )
+                cotas = _update_cotas(line, cotas, tax_ids, new_sign, anaf_code)
             else:
                 if invoice.operation_type in ["V", "C"]:
                     tax_ids = line.product_id.supplier_taxes_id.filtered(
-                        lambda tax: tax.amount_type == "percent")
+                        lambda tax: tax.amount_type == "percent"
+                    )
                 else:
                     tax_ids = line.tax_ids.filtered(
-                        lambda tax: tax.amount_type == "percent")
-                cotas = _update_cotas(cotas, tax_ids, new_sign, anaf_code)
+                        lambda tax: tax.amount_type == "percent"
+                    )
+                cotas = _update_cotas(line, cotas, tax_ids, new_sign, anaf_code)
         return cotas
-
-
-
