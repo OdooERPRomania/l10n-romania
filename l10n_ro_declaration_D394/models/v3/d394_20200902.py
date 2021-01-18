@@ -6,6 +6,9 @@ from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
+# l10n_ro_declaration_D394/models/v3/d394_20200902.py:15:5: C901 'Declaratie394.build_file' is too complex (35)
+# l10n_ro_declaration_D394/models/v3/d394_20200902.py:639:5: C901 'Declaratie394._get_detaliu' is too complex (22)
+
 
 class Declaratie394(models.TransientModel):
     _name = "anaf.d394.v3"

@@ -374,6 +374,9 @@ class AnafMixin(models.AbstractModel):
         return vals
 
     def get_journal_line_vals(self, invoice, vals=False, journal_type=True, sign=1):
+        # l10n_ro_declaration / models / anaf_mixin.py: 376:5: C901
+        # 'AnafMixin.get_journal_line_vals' is too
+        # complex(17)
         if not vals:
             journal_columns = self.get_journal_columns()
             sumed_colums = self.get_sumed_columns()
