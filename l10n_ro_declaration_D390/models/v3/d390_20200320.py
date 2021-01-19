@@ -1,11 +1,8 @@
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
-import logging
 
 from odoo import _, models
 from odoo.exceptions import UserError
-
-_logger = logging.getLogger(__name__)
 
 dict_tags = {
     "01 - BAZA": "L",
@@ -41,8 +38,6 @@ class Declaratie390(models.TransientModel):
             "d_rec": int(self.rectificative),
             "totalPlata_A": 0,
         }
-
-        _logger.warning("xmldict")
         sign = self.generate_sign()
         xmldict.update(sign)
         company_data = self.generate_company_data()
@@ -62,6 +57,13 @@ class Declaratie390(models.TransientModel):
             if key not in ("operatie", "rezumat", "cos"):
                 data_file += """{}="{}" """.format(key, val)
         data_file += """>"""
+
+        nr_pag = 0
+        if "operatie" in xmldict:
+            nr_pag += 1
+        if "cos" in xmldict:
+            nr_pag += 1
+        xmldict["rezumat"]["nr_pag"] = nr_pag
 
         data_file += """
     <rezumat """
@@ -85,8 +87,6 @@ class Declaratie390(models.TransientModel):
 
         data_file += """
 </declaratie390>"""
-        _logger.warning(data_file)
-
         return data_file
 
     def generate_company_data(self):
@@ -182,7 +182,6 @@ class Declaratie390(models.TransientModel):
         return operatii
 
     def _get_rezumat(self, operatie):
-        nr_pag = 1
         nrOperatori = len(operatie)
         dict_rezumat = {"L": 0, "T": 0, "A": 0, "P": 0, "S": 0, "R": 0}
 
@@ -192,7 +191,6 @@ class Declaratie390(models.TransientModel):
                     dict_rezumat[type_op] += item["baza"]
         total_baza = sum([val for val in dict_rezumat.values()])
         rezumat = {
-            "nr_pag": nr_pag,
             "nrOPI": nrOperatori,
             "bazaL": dict_rezumat["L"],
             "bazaT": dict_rezumat["T"],

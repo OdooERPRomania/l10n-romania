@@ -14,8 +14,13 @@
       <xs:restriction base="xs:anyType">
         <xs:sequence>
           <xs:element name="rezumat" type="RezumatType" />
-          <xs:element name="cos" type="CosType" maxOccurs="unbounded" />
-          <xs:element name="operatie" type="OperatieType" maxOccurs="unbounded" />
+          <xs:element name="cos" type="CosType" minOccurs="0" maxOccurs="unbounded" />
+          <xs:element
+            name="operatie"
+            type="OperatieType"
+            minOccurs="0"
+            maxOccurs="unbounded"
+          />
         </xs:sequence>
         <xs:attribute name="luna" type="IntInt1_12SType" use="required" />
         <xs:attribute name="an" type="IntInt2017_2100SType" use="required" />
