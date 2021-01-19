@@ -14,6 +14,13 @@ class SaleJournalReport(models.TransientModel):
     def _get_report_values(self, docids=None, data=None):
         journal_type = data["form"]["journal_type"]
         anaf = self.env["l10n.ro.account.report.journal"].browse(data["form"]["anaf"])
+        if anaf.date_range_id:
+            anaf.write(
+                {
+                    "date_from": anaf.date_range_id.date_start,
+                    "date_to": anaf.date_range_id.date_end,
+                }
+            )
         if journal_type == "sale":
             types = ["out_invoice", "out_refund", "out_receipt"]
         else:
@@ -45,7 +52,7 @@ class SaleJournalReport(models.TransientModel):
         report_type_sale = journal_type == "sale"
 
         report_lines, totals = self.compute_report_lines(
-            anaf, invoices, data, show_warnings, report_type_sale
+            anaf, invoices, report_type_sale
         )
 
         docargs = {
