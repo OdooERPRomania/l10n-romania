@@ -7,10 +7,9 @@ JOURNAL_COLUMNS = {
         "tags": [
             "05 - BAZA",
             "07 - BAZA",
-            "07_1 - BAZA",
-            "12_1_1 - BAZA",
-            "12_1_1 - BAZA",
-            "12_1_1 - BAZA",
+            "12_1 - BAZA",
+            "12_2 - BAZA",
+            "12_3 - BAZA",
         ],
     },
     "tva_col": {
@@ -18,10 +17,9 @@ JOURNAL_COLUMNS = {
         "tags": [
             "05 - TVA",
             "07 - TVA",
-            "07_1 - TVA",
-            "12_1_1 - TVA",
-            "12_1_1 - TVA",
-            "12_1_1 - TVA",
+            "12_1 - TVA",
+            "12_2 - TVA",
+            "12_3 - TVA",
         ],
     },
     "base_exig": {
@@ -31,8 +29,11 @@ JOURNAL_COLUMNS = {
             "10 - BAZA",
             "11 - BAZA",
             "24_1 - BAZA",
+            "24_2 - BAZA",
             "25_1 - BAZA",
+            "25_2 - BAZA",
             "26_1 - BAZA",
+            "26_2 - BAZA",
         ],
     },
     "tva_exig": {
@@ -42,8 +43,11 @@ JOURNAL_COLUMNS = {
             "10 - TVA",
             "11 - TVA",
             "24_1 - TVA",
+            "24_2 - TVA",
             "25_1 - TVA",
+            "25_2 - TVA",
             "26_1 - TVA",
+            "26_2 - BAZA",
         ],
     },
     "base_19": {
@@ -71,7 +75,7 @@ JOURNAL_COLUMNS = {
         "tags": ["11 - TVA", "26_1 - TVA", "26_2 - TVA"],
     },
     "base_0": {"type": "int", "tags": ["14 - BAZA", "30 - BAZA"]},
-    "invers": {"type": "int", "tags": ["13 - BAZA", "27 - BAZA"]},
+    "invers": {"type": "int", "tags": ["13 - BAZA"]},
     "payments": {"type": "list", "tags": []},
     "base_neex": {
         "type": "int",
@@ -80,8 +84,11 @@ JOURNAL_COLUMNS = {
             "10 - BAZA",
             "11 - BAZA",
             "24_1 - BAZA",
+            "24_2 - BAZA",
             "25_1 - BAZA",
+            "25_2 - BAZA",
             "26_1 - BAZA",
+            "26_2 - BAZA",
         ],
     },
     "tva_neex": {
@@ -91,19 +98,26 @@ JOURNAL_COLUMNS = {
             "10 - TVA",
             "11 - TVA",
             "24_1 - TVA",
+            "24_2 - TVA",
             "25_1 - TVA",
+            "25_2 - TVA",
             "26_1 - TVA",
+            "26_2 - BAZA",
         ],
     },
     "tva_bun": {"type": "int", "tags": []},
     "tva_serv": {"type": "int", "tags": []},
     "neimp": {"type": "int", "tags": ["30 - BAZA"]},
-    "others": {"type": "int", "tags": []},
-    "scutit1": {"type": "int", "tags": ["14 - BAZA"]},  # cu drept de deducere
-    "scutit2": {"type": "int", "tags": ["15 - BAZA"]},  # fara drept de deducere
-    "base_ded1": {"type": "int", "tags": ["01 - BAZA"]},  # intracomunitar servicii
-    "base_ded2": {"type": "int", "tags": ["03 - BAZA"]},  # intracomunitar bunuri
+    "others": {"type": "int", "tags": ["03_1 - BAZA"]},
+    "scutit1": {"type": "int", "tags": ["01 - BAZA", "30 - BAZA"]},  # intracomunitar servicii
+    "scutit2": {"type": "int", "tags": ["03 - BAZA", "30_1 - BAZA"]},  # intracomunitar bunuri
+    "base_ded1": {"type": "int", "tags": ["14 - BAZA", "22 - BAZA"]},  # cu drept de deducere
+    "base_ded2": {"type": "int", "tags": ["15 - BAZA", "20 - BAZA"]},  # fara drept de deducere
     "warnings": {"type": "char", "tags": []},
+    "base_inverse_taxation": {"type": "int", "tags": ["27_1 - BAZA", "27_2 - BAZA", "27_3 - BAZA"]},
+    "tva_ded1": {"type": "int", "tags": ["22 - TVA"]},
+    "tva_ded2": {"type": "int", "tags": ["20 - TVA"]},
+    "tva_inverse_taxation": {"type": "int", "tags": ["27_1 - TVA", "27_2 - TVA", "27_3 - TVA"]},
 }
 
 SUMED_COLUMNS = {
