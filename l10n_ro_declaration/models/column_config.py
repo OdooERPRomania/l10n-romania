@@ -109,15 +109,33 @@ JOURNAL_COLUMNS = {
     "tva_serv": {"type": "int", "tags": []},
     "neimp": {"type": "int", "tags": ["30 - BAZA"]},
     "others": {"type": "int", "tags": ["03_1 - BAZA"]},
-    "scutit1": {"type": "int", "tags": ["01 - BAZA", "30 - BAZA"]},  # intracomunitar servicii
-    "scutit2": {"type": "int", "tags": ["03 - BAZA", "30_1 - BAZA"]},  # intracomunitar bunuri
-    "base_ded1": {"type": "int", "tags": ["14 - BAZA", "22 - BAZA"]},  # cu drept de deducere
-    "base_ded2": {"type": "int", "tags": ["15 - BAZA", "20 - BAZA"]},  # fara drept de deducere
+    "scutit1": {
+        "type": "int",
+        "tags": ["01 - BAZA", "30 - BAZA"],
+    },  # intracomunitar servicii
+    "scutit2": {
+        "type": "int",
+        "tags": ["03 - BAZA", "30_1 - BAZA"],
+    },  # intracomunitar bunuri
+    "base_ded1": {
+        "type": "int",
+        "tags": ["14 - BAZA", "22 - BAZA"],
+    },  # cu drept de deducere
+    "base_ded2": {
+        "type": "int",
+        "tags": ["15 - BAZA", "20 - BAZA"],
+    },  # fara drept de deducere
     "warnings": {"type": "char", "tags": []},
-    "base_inverse_taxation": {"type": "int", "tags": ["27_1 - BAZA", "27_2 - BAZA", "27_3 - BAZA"]},
+    "base_inverse_taxation": {
+        "type": "int",
+        "tags": ["27_1 - BAZA", "27_2 - BAZA", "27_3 - BAZA"],
+    },
     "tva_ded1": {"type": "int", "tags": ["22 - TVA"]},
     "tva_ded2": {"type": "int", "tags": ["20 - TVA"]},
-    "tva_inverse_taxation": {"type": "int", "tags": ["27_1 - TVA", "27_2 - TVA", "27_3 - TVA"]},
+    "tva_inverse_taxation": {
+        "type": "int",
+        "tags": ["27_1 - TVA", "27_2 - TVA", "27_3 - TVA"],
+    },
 }
 
 SUMED_COLUMNS = {

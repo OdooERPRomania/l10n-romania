@@ -7,13 +7,13 @@ from odoo import api, fields, models
 
 
 class SaleJournalReport(models.TransientModel):
-    _name = "report.l10n_ro_account_report_journal.report_sale_purchase"
+    _name = "report.l10n_ro_account_report_journal.report_sp"
     _description = "Report Sale Purchase Journal"
 
     @api.model
     def _get_report_values(self, docids=None, data=None):
-        journal_type = data["form"]["journal_type"]
-        anaf = self.env["l10n.ro.account.report.journal"].browse(data["form"]["anaf"])
+        journal_type = data["journal_type"]
+        anaf = self.env["l10n.ro.account.report.journal"].browse(data["id"])
         if anaf.date_range_id:
             anaf.write(
                 {
@@ -48,7 +48,7 @@ class SaleJournalReport(models.TransientModel):
                 tags |= tags_obj._get_tax_tags(tag, anaf.company_id.country_id.id)
             supp_invoices = anaf.get_period_invoices_by_tags(types, tags.ids)
             invoices |= supp_invoices
-        show_warnings = data["form"]["show_warnings"]
+        show_warnings = data["show_warnings"]
         report_type_sale = journal_type == "sale"
 
         report_lines, totals = self.compute_report_lines(
