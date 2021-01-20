@@ -79,6 +79,14 @@ class AccountMove(models.Model):
                     ("name", "=", "Regim Taxare Inversa"),
                 ]
             )
+        tva_fp = self.company_id.property_vat_on_payment_position_id
+        if not tva_fp:
+            tva_fp = self.env["account.fiscal.position"].search(
+                [
+                    ("company_id", "=", self.company_id.id),
+                    ("name", "=", "Regim TVA la Incasare"),
+                ]
+            )
         for inv in self:
             (
                 country_code,
@@ -103,7 +111,7 @@ class AccountMove(models.Model):
                     oper_type = "C"
                 elif inv.special_regim:
                     oper_type = "AS"
-                elif inv.vat_on_payment:
+                elif inv.fiscal_position_id == tva_fp:
                     oper_type = "AI"
                 else:
                     oper_type = "A"
