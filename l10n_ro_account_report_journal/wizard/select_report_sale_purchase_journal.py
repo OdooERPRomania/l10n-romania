@@ -26,17 +26,20 @@ class SalePurchaseJournalReport(models.TransientModel):
     )
 
     def print_report_html(self):
+        self.ensure_one()
         res = self.print_report(html=True)
         return res
 
     def print_report(self, html=False):
         self.ensure_one()
         [data] = self.read()
-        datas = {"ids": [], "model": "l10n_ro_account_report_journal", "form": data}
-        report_action = "l10n_ro_account_report_journal.action_report_sale" + (
-            "_html" if html else ""
+        report_action = (
+            "l10n_ro_account_report_journal.action_report_sale_html"
+            if html
+            else "l10n_ro_account_report_journal.action_report_sale"
         )
-        datas["form"]["anaf"] = self.id
         ref = self.env.ref(report_action)
-        res = ref.report_action(docids=[], data=datas, config=False)
+        if not html:
+            ref = ref.with_context(landscape=True)
+        res = ref.report_action(self, data=data)
         return res
