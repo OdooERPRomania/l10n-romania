@@ -59,8 +59,14 @@ class Declaratie300(models.TransientModel):
 
         vat_report_totals = self.generate_total()
         xmldict.update(vat_report_totals)
-        total_keys = ["nr_facturi", "baza", "tva",
-                      "nr_facturi_primite", "baza_primite", "tva_primite"]
+        total_keys = [
+            "nr_facturi",
+            "baza",
+            "tva",
+            "nr_facturi_primite",
+            "baza_primite",
+            "tva_primite",
+        ]
         for _key, value in vat_report_totals.items():
             if _key in total_keys:
                 totalPlata_A += value
@@ -116,10 +122,9 @@ class Declaratie300(models.TransientModel):
 
     def generate_data(self):
         self.ensure_one()
-        vat_report = self._get_vat_report_data(
+        vat_report = self._get_anaf_vat_report_data(
             self.company_id.id, self.date_from, self.date_to
         )
-        print(vat_report)
         data = {
             "R1_1": self.get_amount(vat_report, "01 - BAZA"),
             "R2_1": self.get_amount(vat_report, "02 - BAZA"),
@@ -175,17 +180,17 @@ class Declaratie300(models.TransientModel):
             "R21_1": self.get_amount(vat_report, "23 - BAZA"),
             "R21_2": self.get_amount(vat_report, "23 - TVA"),
             "R22_1": self.get_amount(vat_report, "24_1 - BAZA")
-                     + int(round(0.5 * self.get_amount(vat_report, "24_2 - BAZA"))),
+            + int(round(0.5 * self.get_amount(vat_report, "24_2 - BAZA"))),
             "R22_2": self.get_amount(vat_report, "24_1 - TVA")
-                     + self.get_amount(vat_report, "24_2 - TVA"),
+            + self.get_amount(vat_report, "24_2 - TVA"),
             "R23_1": self.get_amount(vat_report, "25_1 - BAZA")
-                     + int(round(0.5 * self.get_amount(vat_report, "25_2 - BAZA"))),
+            + int(round(0.5 * self.get_amount(vat_report, "25_2 - BAZA"))),
             "R23_2": self.get_amount(vat_report, "25_1 - TVA")
-                     + self.get_amount(vat_report, "25_2 - TVA"),
+            + self.get_amount(vat_report, "25_2 - TVA"),
             "R24_1": self.get_amount(vat_report, "26_1 - BAZA")
-                     + int(round(0.5 * self.get_amount(vat_report, "26_2 - BAZA"))),
+            + int(round(0.5 * self.get_amount(vat_report, "26_2 - BAZA"))),
             "R24_2": self.get_amount(vat_report, "26_1 - TVA")
-                     + self.get_amount(vat_report, "26_2 - TVA"),
+            + self.get_amount(vat_report, "26_2 - TVA"),
             "R25_1": self.get_amount(vat_report, "27 - BAZA"),
             "R25_2": self.get_amount(vat_report, "27 - TVA"),
             "R25_1_1": self.get_amount(vat_report, "27_1 - BAZA"),
@@ -208,24 +213,16 @@ class Declaratie300(models.TransientModel):
         }
 
         data["R12_1"] += (
-            data.get("R12_1_1", 0)
-            + data.get("R12_2_1", 0)
-            + data.get("R12_3_1", 0)
+            data.get("R12_1_1", 0) + data.get("R12_2_1", 0) + data.get("R12_3_1", 0)
         )
         data["R12_2"] += (
-            data.get("R12_1_2", 0)
-            + data.get("R12_2_2", 0)
-            + data.get("R12_3_2", 0)
+            data.get("R12_1_2", 0) + data.get("R12_2_2", 0) + data.get("R12_3_2", 0)
         )
         data["R25_1"] += (
-            data.get("R25_1_1", 0)
-            + data.get("R25_2_1", 0)
-            + data.get("R25_3_1", 0)
+            data.get("R25_1_1", 0) + data.get("R25_2_1", 0) + data.get("R25_3_1", 0)
         )
         data["R25_2"] += (
-            data.get("R25_1_2", 0)
-            + data.get("R25_2_2", 0)
-            + data.get("R25_3_2", 0)
+            data.get("R25_1_2", 0) + data.get("R25_2_2", 0) + data.get("R25_3_2", 0)
         )
         data["R17_1"] = (
             data.get("R1_1", 0)
@@ -303,14 +300,15 @@ class Declaratie300(models.TransientModel):
 
     def generate_total(self):
         self.ensure_one()
-        cust_invoices = \
-            self.get_period_invoices(["out_invoice", "out_refund"]).filtered(
-                lambda i: i.correction
-            )
+        cust_invoices = self.get_period_invoices(
+            ["out_invoice", "out_refund"]
+        ).filtered(lambda i: i.correction)
         supp_invoices = self.get_period_invoices(["in_invoice", "in_refund"]).filtered(
-                lambda i: i.correction
-            )
-        cust_vatp_invoices = self.get_period_vatp_invoices(["out_invoice", "out_refund"])
+            lambda i: i.correction
+        )
+        cust_vatp_invoices = self.get_period_vatp_invoices(
+            ["out_invoice", "out_refund"]
+        )
         supp_vatp_invoices = self.get_period_vatp_invoices(["in_invoice", "in_refund"])
         valoare_a = valoare_a1 = tva_a = tva_a1 = 0
         valoare_b = valoare_b1 = tva_b = tva_b1 = 0

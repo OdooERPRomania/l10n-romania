@@ -3,19 +3,20 @@
 
 {
     "name": "Romania - Account Report Journal",
+    "summary": "Romania - Account Report Journal",
+    "version": "14.0.1.0.0",
+    "development_status": "Mature",
     "category": "Localization",
-    "summary": "Romania - Account Sale and Purchase Journal Report",
+    "website": "https://github.com/OCA/l10n-romania",
+    "author": "NextERP Romania," "Odoo Community Association (OCA)",
+    "maintainers": ["feketemihai"],
+    "license": "AGPL-3",
+    "application": False,
+    "installable": True,
     "depends": ["l10n_ro_declaration"],
     "data": [
         "report/report_sale_purchase.xml",
         "wizard/select_report_sale_purchase_view.xml",
         "security/ir.model.access.csv",
     ],
-    "license": "AGPL-3",
-    "version": "13.0.1.0.0",
-    "author": "NextERP Romania, Odoo Community Association (OCA)",
-    "website": "https://github.com/OCA/l10n-romania",
-    "installable": True,
-    "development_status": "Mature",
-    "maintainers": ["feketemihai"],
 }

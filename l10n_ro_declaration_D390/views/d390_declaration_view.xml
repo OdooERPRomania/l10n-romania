@@ -4,7 +4,7 @@
         <field name="name">anaf.d390.form</field>
         <field name="model">anaf.d390</field>
         <field name="arch" type="xml">
-            <form string="D394 Declaration Options">
+            <form string="D390 Declaration Options">
                 <field name="name" invisible="1" />
                 <group name="main_info">
                     <field
@@ -12,18 +12,26 @@
                         options="{'no_create': True}"
                         groups="base.group_multi_company"
                     />
-                    <field name="declaration_id" />
-                    <field name="version_id" />
-                    <field name="signature_id" />
-<!--                    <field name="succesor_id" />-->
-                    <field name="bank_account_id" />
+                    <field
+                        name="declaration_id"
+                        domain="[('name', '=', 'd390')]"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="version_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
+                    <field
+                        name="signature_id"
+                        options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
+                    />
                 </group>
-
                 <group name="filters">
                     <group name="date_range">
                         <field
                             name="date_range_id"
                             domain="['|',('company_id','=',company_id), ('company_id','=',False)]"
+                            options="{'no_quick_create': True, 'no_create_edit' : True, 'no_open': True}"
                         />
                         <field name="date_from" />
                         <field name="date_to" />

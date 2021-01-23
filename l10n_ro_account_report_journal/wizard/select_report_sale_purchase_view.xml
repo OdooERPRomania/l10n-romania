@@ -24,8 +24,9 @@
                     />
                     <field name="show_warnings" />
                 </group>
-                <div
-                >This report in based on taxes tags names. If you have changed them, or did not put them in invoices,
+                <div>
+                    This report in based on taxes tags names. If you have changed them,
+                    or did not put them in invoices,
                     the report can be wrong.
                 </div>
                 <footer>

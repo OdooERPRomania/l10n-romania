@@ -269,37 +269,37 @@
                         </div>
                         <div
                             class="col-xs-12 col-md-6 o_setting_box"
-                            id="module_l10n_ro_account_report_D300"
+                            id="module_l10n_ro_declaration_D300"
                         >
                             <div class="o_setting_left_pane">
-                                <field name="module_l10n_ro_account_report_D300" />
+                                <field name="module_l10n_ro_declaration_D300" />
                             </div>
                             <div class="o_setting_right_pane">
-                                <label for="module_l10n_ro_account_report_D300" />
+                                <label for="module_l10n_ro_declaration_D300" />
                                 <div class="text-muted" />
                             </div>
                         </div>
                         <div
                             class="col-xs-12 col-md-6 o_setting_box"
-                            id="module_l10n_ro_account_report_D390"
+                            id="module_l10n_ro_declaration_D390"
                         >
                             <div class="o_setting_left_pane">
-                                <field name="module_l10n_ro_account_report_D390" />
+                                <field name="module_l10n_ro_declaration_D390" />
                             </div>
                             <div class="o_setting_right_pane">
-                                <label for="module_l10n_ro_account_report_D390" />
+                                <label for="module_l10n_ro_declaration_D390" />
                                 <div class="text-muted" />
                             </div>
                         </div>
                         <div
                             class="col-xs-12 col-md-6 o_setting_box"
-                            id="module_l10n_ro_account_report_D394"
+                            id="module_l10n_ro_declaration_D394"
                         >
                             <div class="o_setting_left_pane">
-                                <field name="module_l10n_ro_account_report_D394" />
+                                <field name="module_l10n_ro_declaration_D394" />
                             </div>
                             <div class="o_setting_right_pane">
-                                <label for="module_l10n_ro_account_report_D394" />
+                                <label for="module_l10n_ro_declaration_D394" />
                                 <div class="text-muted" />
                             </div>
                         </div>

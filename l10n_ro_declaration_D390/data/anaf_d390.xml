@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <!-- ANAF D390 Declaration -->
+    <record id="anaf_D390" model="anaf.declaration">
+        <field name="name">d390</field>
+    </record>
+    <!-- ANAF D300 Declaration - Version 3 -->
+    <record id="anaf_d390_v3_xsd" model="ir.attachment">
+        <field name="name">d390_20200323.xsd</field>
+        <field
+            name="datas"
+            type="base64"
+            file="l10n_ro_declaration_D390/static/xsd/d390_20200323.xsd"
+        />
+    </record>
+    <record id="anaf_D390_v3" model="anaf.declaration.version">
+        <field name="name">Versiunea 3</field>
+        <field name="model" ref="model_anaf_d390_v3" />
+        <field name="declaration_id" ref="anaf_D390" />
+        <field name="validator" ref="anaf_d390_v3_xsd" />
+    </record>
+</odoo>

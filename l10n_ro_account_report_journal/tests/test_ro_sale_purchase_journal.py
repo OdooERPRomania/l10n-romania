@@ -1,12 +1,11 @@
 # Copyright (C) 2020 NextERP Romania
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-from datetime import datetime, timedelta
-from unittest.mock import patch
+from datetime import timedelta
 
 from odoo import fields
 from odoo.tests import tagged
-from odoo.tests.common import Form, TransactionCase
+from odoo.tests.common import TransactionCase
 
 from odoo.addons.account.tests.invoice_test_common import InvoiceTestCommon
 
@@ -17,9 +16,6 @@ class TestRoSalePurchaseWizard(TransactionCase):
         today = fields.Date.today()
         date_to = today.replace(day=1) - timedelta(days=1)
         date_from = today.replace(day=1) - timedelta(days=date_to.day)
-        sale_journal = self.env["account.journal"].search(
-            [("type", "=", "sale")], limit=1
-        )
         wiz_select_sale_purchase = self.env["l10n.ro.account.report.journal"]
 
         for journal_type in ["sale", "purchase"]:
@@ -36,7 +32,7 @@ class TestRoSalePurchaseJournal(InvoiceTestCommon):
 
     @classmethod
     def setup_company_data(cls, company_name="", **kwargs):
-        """ taken from  odoo.addons.account.tests.account_test_savepoint
+        """taken from  odoo.addons.account.tests.account_test_savepoint
         Create a new company with Romania accounts
         The current user will get access to this company.
 
@@ -136,7 +132,7 @@ class TestRoSalePurchaseJournal(InvoiceTestCommon):
                 "property_account_payable_id": cls.company_data[
                     "default_account_payable"
                 ].id,
-                #'fiscal_position':,
+                # 'fiscal_position':,
                 "company_id": False,
             }
         )
@@ -290,7 +286,8 @@ class TestRoSalePurchaseJournal(InvoiceTestCommon):
 
     #         print invoices
     #         for inv in cls.invoices:
-    #             print(f"invoice id={inv.id} date={inv.date} amount_untaxed={inv.amount_untaxed},amount_tax={inv.amount_tax} amount_total={inv.amount_total} ")
+    #             print(f"invoice id={inv.id} date={inv.date} amount_untaxed={inv.amount_untaxed},
+    #             amount_tax={inv.amount_tax} amount_total={inv.amount_total} ")
 
     def assertInvoiceReportValues(self, expected_values_list, journal_type="sale"):
         report_obj = self.env[
