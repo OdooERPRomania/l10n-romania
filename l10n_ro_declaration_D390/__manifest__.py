@@ -16,7 +16,7 @@
     "data": [
         "data/anaf_d390.xml",
         "security/ir.model.access.csv",
-
+        "views/stock_picking_view.xml",
         "views/d390_declaration_view.xml",
     ],
 }
