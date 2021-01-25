@@ -221,7 +221,12 @@ class Declaratie390(models.TransientModel):
              ])
         lists_cos = []
         for picking in moves_given:
-            if picking.notice:
+            _is_delivery = False
+            for line in picking.move_lines:
+                if line._is_delivery():
+                    _is_delivery = True
+
+            if _is_delivery:
                 contact = picking.partner_id
                 country_code = contact._map_anaf_country_code(contact.country_id.code) or ""
                 if country_code in contact._get_anaf_europe_codes():
@@ -236,7 +241,11 @@ class Declaratie390(models.TransientModel):
              ("date_transfer_new_contact", "<=", self.date_to)
              ])
         for picking in moves_new:
-            if picking.notice:
+            _is_delivery = False
+            for line in picking.move_lines:
+                if line._is_delivery():
+                    _is_delivery = True
+            if _is_delivery:
                 contact = picking.partner_id
                 new_contact = picking.new_contact
                 country_code = contact._map_anaf_country_code(contact.country_id.code) or ""
@@ -249,8 +258,8 @@ class Declaratie390(models.TransientModel):
                                  new_country_code,
                                  new_contact.vat_number)
                         lists_cos.append(t_cos)
-        s_cos = list(set(lists_cos))
 
+        s_cos = list(set(lists_cos))
         dicts_cos = []
         for item in s_cos:
             if len(item) == 3 :

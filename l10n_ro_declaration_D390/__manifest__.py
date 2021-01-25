@@ -12,7 +12,7 @@
     "license": "AGPL-3",
     "application": False,
     "installable": True,
-    "depends": ["l10n_ro_declaration"],
+    "depends": ["l10n_ro_declaration","l10n_ro_stock_account"],
     "data": [
         "data/anaf_d390.xml",
         "security/ir.model.access.csv",

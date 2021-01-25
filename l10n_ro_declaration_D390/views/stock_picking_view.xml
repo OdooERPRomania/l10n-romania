@@ -6,12 +6,8 @@
         <field name="inherit_id" ref="stock.view_picking_form" />
          <field name="arch" type="xml">
               <xpath expr="//field[@name='origin']" position="after">
-                  <field name="new_contact" attrs="{'invisible': [
-                            ('notice', '=', False),
-                            ]}" />
-                  <field name="date_transfer_new_contact" attrs="{'invisible': [
-                            ('notice', '=', False),
-                            ]}"  />
+                  <field name="new_contact"  />
+                  <field name="date_transfer_new_contact" />
               </xpath>
          </field>
     </record>
