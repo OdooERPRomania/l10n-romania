@@ -229,7 +229,9 @@ class Declaratie390(models.TransientModel):
             if _is_delivery:
                 contact = picking.partner_id
                 country_code = contact._map_anaf_country_code(contact.country_id.code) or ""
-                if country_code in contact._get_anaf_europe_codes():
+                country_EU = contact._get_anaf_europe_codes().copy()
+                country_EU.remove("RO")
+                if country_code in country_EU:
 
                     if not picking.new_contact :
                         t_cos = ("A",
@@ -250,7 +252,9 @@ class Declaratie390(models.TransientModel):
                 new_contact = picking.new_contact
                 country_code = contact._map_anaf_country_code(contact.country_id.code) or ""
                 new_country_code = new_contact._map_anaf_country_code(new_contact.country_id.code) or ""
-                if new_country_code in  contact._get_anaf_europe_codes():
+                country_EU = contact._get_anaf_europe_codes().copy()
+                country_EU.remove("RO")
+                if new_country_code in  country_EU:
                     if new_contact :
                         t_cos = ("B",
                                  country_code,
